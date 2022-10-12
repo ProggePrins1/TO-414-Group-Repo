@@ -87,12 +87,10 @@ plot(tele_model)
 # What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won't be able to see this for some reason... - just take our word for it!)
 ```
 
-
 ### Reordering the columns
 
+Before we do anything with our model_results, for convenience, let's put *yyes* as the **first column** in our datasets.
 ```{r, eval = FALSE}
-
-# Before we do anything with our model_results, for convenience, let's put yyes as the first column in our datasets.
 
 library(tidyverse)
 
@@ -106,8 +104,8 @@ tele_test %>%
 
 # Let's Do Some Comparisons
 
+## Initial ANN Model
 ```{r}
-
 # First, we must load the neuralnet package.
 
 library(neuralnet)
@@ -120,14 +118,14 @@ summary(predictedtele)
 
 yyes_prediction <- ifelse(predictedtele < 0.5, 0, 1)
 
-# Now, we must make a CrossTable
+# Now, we must make a CrossTable.
 
 library(gmodels)
 library(caret)
-# Next up, we can create a CrossTable
+
 CrossTable(x = yyes_prediction, y = tele_test$yyes, prop.chisq = FALSE)
 
-# Let's also create a confusionMatrix
+# Let's also create a confusion matrix.
 confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_test$yyes), positive = "1")
 ```
 
@@ -135,61 +133,56 @@ confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_te
 
 > In our ANN, we see that...
 
-## Next Up: Improving Our ANN Model
+## Improving Our ANN Model
 
 ```{r}
 # Let's do everything again, but now adding some additional layers to the dataset.
 
 ```
 
-# What about Logistic Regression?
+# Logistic Regression
+
+We have thankfully already cleaned the data up now. Additionally, Logistic Regression forces dummy variables and doesn't need normalized values. That means that we can just randomize two exact sets based on the cleaned "tele" dataset. Let's do that!
 
 ```{r}
-# We have thankfully already cleaned the data up. 
-# Additionally, Logistic Regression forces dummy variables and doesn't need normalized values.
-# But let's just use a dummy version instead so that we at least have some dummies, being tele_modelmatrix
-
 set.seed(12345)
 tele_random_log <- tele[sample(nrow(tele)),]
 
-# again, we can create a training and test set now...
-
-## factor default has new levels yes --> issue because our train_log didn't have the value "yes", but our tele_test_log did...
+# Let's create and train and test set.
 tele_train_log <- tele_random_log[1:8238,]
 tele_test_log <- tele_random_log[8239:41188,]
-summary(tele_train_log)
-
-cor(tele_train_log$age, tele_train_log$campaign)
-# Let's remove the y column
-
-predictionmodel <- glm(y ~ ., data = tele_train_log, family = "binomial")
-summary(predictionmodel)
-
-## First, we need to know why we get the "1 not defined because of singularities" and "rank-deficient fit" pop ups. This basically shows that two variables are perfectly multicollinear. Since NOT all of our variables are numeric, we cannot run the correlation function as done below since we would also have to do this for the factors.
-
-# Let's first look at the numerics, though...
-cor(tele_train_log[sapply(tele_train_log,is.numeric)])
-# We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
-# So let's do that again with the factors. One quick way is to use alias()
-
-alias(predictionmodel)
-# See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
-
 
 # In the meantime, let's store our test labels for the test set somewhere else...
 tele_test_log_labels <- tele_test_log$y
 tele_test_log$y <- NULL
 
+predictionmodel <- glm(y ~ ., data = tele_train_log, family = "binomial")
+summary(predictionmodel)
 ```
 
-## Fixing Our Prediction Issue
+### Addressing Multicollinearity (cor() and alias())
+
+First, we need to know why we get the "1 not defined because of singularities" and "rank-deficient fit" pop ups. This basically shows that two variables are perfectly multicollinear. Since NOT all of our variables are numeric, we cannot run the correlation function as done below since we would also have to do this for the factors.
+
+```{r}
+# Let's first look at the numerics, though...
+cor(tele_train_log[sapply(tele_train_log,is.numeric)])
+# We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
+# So let's do that again with the factors. One quick way is to use alias().
+
+alias(predictionmodel)
+# See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
+
+```
+
+### Fixing Our Prediction Issue
 
 ```{r, error = TRUE}
 binarypredictionlog <- ifelse(predict(predictionmodel, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
-## Error: factor default has new levels yes. This issue arises because our train_log didn't have the value "yes", but our tele_test_log did...
+## Error: factor default has new levels yes. This issue arises because our train_log default column didn't have the value "yes", but our tele_test_log did...
 # This is, unfortunately, an issue due to the data structure: "yes" just doesn't happen a lot for "default", and to make matters worse it only occurs in our tele_test_log dataset...
 
-# !!!!!!!!!!! Technically, we could just remove the default column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include a row with default = yes in our train set, but that would skew our comparison relative to ANN and KNN, so that has been avoided. 
+# !!!!!!!!!!! Technically, we could just remove the default column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with default = yes in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
 
 predictionmodelnew <- glm(y ~ age + job + marital + education + 
                             housing + loan + contact + month + 
@@ -201,15 +194,18 @@ summary(predictionmodelnew)
 
 binarypredictionlog <- ifelse(predict(predictionmodelnew, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
 
+# Great! Everything's all good now. Next, let's make a crosstable and confusion matrix.
 CrossTable(binarypredictionlog, tele_test_log_labels, prop.chisq = FALSE)
 
-## Is this really the solution?
+##!!!!!!!!!!!!!1 Is this really the solution? !!!!!!!!!!!!!!!!!!!!!!
 tele_test_log_labels_y <- ifelse(tele_test_log_labels == "yes", 1, 0)
 
 confusionMatrix(data = as.factor(binarypredictionlog), reference = as.factor(tele_test_log_labels_y), positive = "1")
 ```
 
-# Improving our Linear Regression
+## Improving our Logistic Regression
+
+We already saw that a lot of our variables in the initial glm were insignificant. To have a more robust glm, we must remove some of these variables, which is done below.
 
 ```{r}
 # Let's first get rid of ALL variables with a p-value exceeding 0.10; thankfully, this also means that we get rid of "default" and the somewhat annoying multicollinearity between housing and loan [unknown].
@@ -222,12 +218,15 @@ binarypredictionlog2 <- ifelse(predict(predictionmodel2, newdata = tele_test_log
 
 CrossTable(binarypredictionlog2, tele_test_log_labels, prop.chisq = FALSE)
 
-confusionMatrix(data = binarypredictionlog2, reference = tele_test_log_labels, positive = "1")
+confusionMatrix(data = as.factor(binarypredictionlog2), reference = as.factor(tele_test_log_labels_y), positive = "1")
 
 ```
 
+## Interpreting our Logistic Regression 
 
-# Let's Build a KNN
+> Text here.
+
+# KNN
 
 ```{r}
 library(class)
@@ -263,6 +262,32 @@ confusionMatrix(data = tele_test_pred_knn, reference = as.factor(tele_test_label
 
 ```
 
-# Final Notes
+# A Combined Prediction Model
+
+```{r}
+
+```
+
+## Interpreting our Combined Prediction Model
+
+> Text here. 
+
+# K-means Clustering
+
+```{r}
+
+```
+
+## Improving our K-means Clustering Model
+
+```{r}
+
+```
+
+## Interpreting our K-means Clustering Model
+
+> Text here. 
+
+# Conclusion and Recommendations
 
 > Text here....
