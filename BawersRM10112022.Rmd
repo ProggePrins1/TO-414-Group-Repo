@@ -123,7 +123,7 @@ yyes_prediction <- ifelse(predictedtele < 0.5, 0, 1)
 library(gmodels)
 library(caret)
 
-CrossTable(x = yyes_prediction, y = tele_test$yyes, prop.chisq = FALSE)
+CrossTable(tele_test$yyes, yyes_prediction, prop.chisq = FALSE)
 
 # Let's also create a confusion matrix.
 confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_test$yyes), positive = "1")
@@ -195,7 +195,7 @@ summary(predictionmodelnew)
 binarypredictionlog <- ifelse(predict(predictionmodelnew, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
 
 # Great! Everything's all good now. Next, let's make a crosstable and confusion matrix.
-CrossTable(binarypredictionlog, tele_test_log_labels, prop.chisq = FALSE)
+CrossTable(tele_test_log_labels, binarypredictionlog, prop.chisq = FALSE)
 
 ##!!!!!!!!!!!!!1 Is this really the solution? !!!!!!!!!!!!!!!!!!!!!!
 tele_test_log_labels_y <- ifelse(tele_test_log_labels == "yes", 1, 0)
@@ -216,7 +216,7 @@ summary(predictionmodel2)
 
 binarypredictionlog2 <- ifelse(predict(predictionmodel2, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
 
-CrossTable(binarypredictionlog2, tele_test_log_labels, prop.chisq = FALSE)
+CrossTable(tele_test_log_labels, binarypredictionlog2, prop.chisq = FALSE)
 
 confusionMatrix(data = as.factor(binarypredictionlog2), reference = as.factor(tele_test_log_labels_y), positive = "1")
 
@@ -268,7 +268,7 @@ To start building a combined prediction model, we need a new dataframe with all 
 ```{r}
 
 combinedoutputs <- data.frame(yyes_prediction, binarypredictionlog, tele_test_pred_knn)
-colnames(combinedoutputs) <- c("ANN", "Logistic Regression", "kNN")
+colnames(combinedoutputs) <- c("ANN", "LogReg", "kNN")
 
 str(combinedoutputs)
 # We see that our kNN column is a factor. Let's change that into a numeric for our ifelse later on.
@@ -277,13 +277,12 @@ combinedoutputs$kNN <- ifelse(combinedoutputs$kNN == "0", 0, 1)
 
 # Let's have a look again...
 str(combinedoutputs)
-summary(combinedoutputs)
 head(combinedoutputs)
 
 # Everything's all good! Let's now have a real combined output.
 
 combinedoutputs$mix <- ifelse(combinedoutputs$ANN + 
-                                combinedoutputs$`Logistic Regression` + 
+                                combinedoutputs$LogReg + 
                                 combinedoutputs$kNN > 1, 1, 0)
 
 # Great! Now let's make a Cross Table and Confusion matrix again.
