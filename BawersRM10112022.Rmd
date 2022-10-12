@@ -278,7 +278,7 @@ combinedoutputs$kNN <- ifelse(combinedoutputs$kNN == "0", 0, 1)
 # Let's have a look again...
 str(combinedoutputs)
 summary(combinedoutputs)
-head(combinedoutpus)
+head(combinedoutputs)
 
 # Everything's all good! Let's now have a real combined output.
 
