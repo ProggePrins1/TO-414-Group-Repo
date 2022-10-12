@@ -184,7 +184,7 @@ tele_test_log$y <- NULL
 
 ## Fixing Our Prediction Issue
 
-```{r}
+```{r, error = TRUE}
 binarypredictionlog <- ifelse(predict(predictionmodel, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
 ## Error: factor default has new levels yes. This issue arises because our train_log didn't have the value "yes", but our tele_test_log did...
 # This is, unfortunately, an issue due to the data structure: "yes" just doesn't happen a lot for "default", and to make matters worse it only occurs in our tele_test_log dataset...
