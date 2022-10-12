@@ -1,30 +1,268 @@
 ---
-title: "BawersRMD10112022"
-author: "Bawer Betasi"
-date: "`r Sys.Date()`"
-output: html_document
+title: "BawersRM10112022"
+output: 
+  html_document:
+    highlight: tango
+    theme: darkly
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    number_sections: true
+date: "2022-10-05"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Data Preparation
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+## Let's Import and Clean the Data
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
 
-```{r cars}
-summary(cars)
+# Import dataset
+
+tele <- read.csv("tele.csv", stringsAsFactors = T)
+
+str(tele)
+#remove X as it's the unique identifier column
+tele$X <- NULL
+
+#delete the duration variable since it comes after the call takes place and thus should not be included in our prediction model
+
+tele$duration <- NULL
+
+#the 999 in pdays is somewhat awkward as it infers that someone was not previously contacted. To circumvent this issue, we can convert pdays into a dummy.
+# where 0 represents that someone was not called before and 1 infers the opposite.
+
+tele$pdaysdummy <- ifelse(tele$pdays == 999, 0, 1)
+# now that we've done this, we can remove the pdays column.
+
+tele$pdays <- NULL
 ```
 
-## Including Plots
+## Prepping the Data for Analysis
 
-You can also embed plots, for example:
+```{r}
+# Since ANN requires inputs to be numerical, we must convert all factors into numerics. This is done by model.matrix.
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+tele_modelmatrix <- as.data.frame(model.matrix(~. -1, tele))
+str(tele_modelmatrix)
+
+# Let's randomize the rows to prevent sequential data biases (e.g., people are less likely to buy because our employees are tired at the end of the day)
+
+set.seed(12345)
+tele_random <- tele_modelmatrix[sample(nrow(tele_modelmatrix)),]
+
+# Next, we have to normalize the data for ANN
+
+normalize <- function(x) {
+  return((x-min(x))/(max(x)-min(x)))
+}
+
+tele_norm <- as.data.frame(lapply(tele_random, normalize))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Let's create a train and test dataset
+
+```{r}
+#For this example, we used a threshold of 20% for the train, and 80% for the test. 
+
+tele_train <- tele_norm[1:8238,]
+tele_test <- tele_norm[8239:41188,]
+
+```
+
+## Let's Build our Model
+
+```{r, cache = TRUE}
+
+library(neuralnet)
+
+tele_model <- neuralnet(yyes ~ ., data = tele_train, hidden = 1)
+plot(tele_model)
+
+# What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won't be able to see this for some reason... - just take our word for it!)
+```
+
+
+### Reordering the columns
+
+```{r, eval = FALSE}
+
+# Before we do anything with our model_results, for convenience, let's put yyes as the first column in our datasets.
+
+library(tidyverse)
+
+tele_train %>% 
+  relocate(yyes)
+
+tele_test %>%
+  relocate(yyes)
+
+```
+
+# Let's Do Some Comparisons
+
+```{r}
+
+# First, we must load the neuralnet package.
+
+library(neuralnet)
+
+modelresults <- neuralnet::compute(tele_model, tele_test[2:54])
+
+predictedtele <- modelresults$net.result
+summary(predictedtele)
+# This seems to be all correct thus far... now, let's actually create a binary value.
+
+yyes_prediction <- ifelse(predictedtele < 0.5, 0, 1)
+
+# Now, we must make a CrossTable
+
+library(gmodels)
+library(caret)
+# Next up, we can create a CrossTable
+CrossTable(x = yyes_prediction, y = tele_test$yyes, prop.chisq = FALSE)
+
+# Let's also create a confusionMatrix
+confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_test$yyes), positive = "1")
+```
+
+## Interpreting Our Initial ANN
+
+> In our ANN, we see that...
+
+## Next Up: Improving Our ANN Model
+
+```{r}
+# Let's do everything again, but now adding some additional layers to the dataset.
+
+```
+
+# What about Logistic Regression?
+
+```{r}
+# We have thankfully already cleaned the data up. 
+# Additionally, Logistic Regression forces dummy variables and doesn't need normalized values.
+# But let's just use a dummy version instead so that we at least have some dummies, being tele_modelmatrix
+
+set.seed(12345)
+tele_random_log <- tele[sample(nrow(tele)),]
+
+# again, we can create a training and test set now...
+
+## factor default has new levels yes --> issue because our train_log didn't have the value "yes", but our tele_test_log did...
+tele_train_log <- tele_random_log[1:8238,]
+tele_test_log <- tele_random_log[8239:41188,]
+summary(tele_train_log)
+
+cor(tele_train_log$age, tele_train_log$campaign)
+# Let's remove the y column
+
+predictionmodel <- glm(y ~ ., data = tele_train_log, family = "binomial")
+summary(predictionmodel)
+
+## First, we need to know why we get the "1 not defined because of singularities" and "rank-deficient fit" pop ups. This basically shows that two variables are perfectly multicollinear. Since NOT all of our variables are numeric, we cannot run the correlation function as done below since we would also have to do this for the factors.
+
+# Let's first look at the numerics, though...
+cor(tele_train_log[sapply(tele_train_log,is.numeric)])
+# We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
+# So let's do that again with the factors. One quick way is to use alias()
+
+alias(predictionmodel)
+# See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
+
+
+# In the meantime, let's store our test labels for the test set somewhere else...
+tele_test_log_labels <- tele_test_log$y
+tele_test_log$y <- NULL
+
+```
+
+## Fixing Our Prediction Issue
+
+```{r}
+binarypredictionlog <- ifelse(predict(predictionmodel, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
+## Error: factor default has new levels yes. This issue arises because our train_log didn't have the value "yes", but our tele_test_log did...
+# This is, unfortunately, an issue due to the data structure: "yes" just doesn't happen a lot for "default", and to make matters worse it only occurs in our tele_test_log dataset...
+
+# !!!!!!!!!!! Technically, we could just remove the default column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include a row with default = yes in our train set, but that would skew our comparison relative to ANN and KNN, so that has been avoided. 
+
+predictionmodelnew <- glm(y ~ age + job + marital + education + 
+                            housing + loan + contact + month + 
+                            day_of_week + campaign + previous + 
+                            poutcome + emp.var.rate + cons.price.idx +
+                            cons.conf.idx + euribor3m + nr.employed +
+                            pdaysdummy, data = tele_train_log, family = "binomial")
+summary(predictionmodelnew)
+
+binarypredictionlog <- ifelse(predict(predictionmodelnew, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
+
+CrossTable(binarypredictionlog, tele_test_log_labels, prop.chisq = FALSE)
+
+## Is this really the solution?
+tele_test_log_labels_y <- ifelse(tele_test_log_labels == "yes", 1, 0)
+
+confusionMatrix(data = as.factor(binarypredictionlog), reference = as.factor(tele_test_log_labels_y), positive = "1")
+```
+
+# Improving our Linear Regression
+
+```{r}
+# Let's first get rid of ALL variables with a p-value exceeding 0.10; thankfully, this also means that we get rid of "default" and the somewhat annoying multicollinearity between housing and loan [unknown].
+
+predictionmodel2 <- glm(y ~ age + job + contact + month + day_of_week + campaign + poutcome + emp.var.rate + cons.price.idx + cons.conf.idx, data = tele_train_log, family = "binomial")
+
+summary(predictionmodel2)
+
+binarypredictionlog2 <- ifelse(predict(predictionmodel2, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
+
+CrossTable(binarypredictionlog2, tele_test_log_labels, prop.chisq = FALSE)
+
+confusionMatrix(data = binarypredictionlog2, reference = tele_test_log_labels, positive = "1")
+
+```
+
+
+# Let's Build a KNN
+
+```{r}
+library(class)
+# We know that for KNN, we have to use a train and test set too, but here we must exclude the response variable.
+# So, all we do is create two label variables instead and drop the response variable from the train and test set.
+
+tele_train_labels <- tele_train$yyes
+tele_test_labels <- tele_test$yyes
+
+tele_train$yyes <- NULL
+tele_test$yyes <- NULL
+
+# Let's now set k
+k <- round(sqrt(nrow(tele_train)), 0)
+# So, k is 91. Thankfully, this is an odd integer so we're all good to continue with this k.
+
+tele_test_pred_knn <- knn(train = tele_train, test = tele_test, cl = tele_train_labels)
+
+CrossTable(tele_test_labels, tele_test_pred_knn, prop.chisq = F)
+
+confusionMatrix(data = tele_test_pred_knn, reference = as.factor(tele_test_labels), positive = "1")
+
+```
+
+## Interpreting the kNN
+
+> Text here... 
+
+
+## Improving Our kNN Model
+
+```{r}
+
+```
+
+# Final Notes
+
+> Text here....
