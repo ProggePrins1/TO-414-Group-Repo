@@ -323,6 +323,11 @@ client_clusters$centers
 # Cluster 4: Other?
 # Cluster 5: Other?
 
+tele_train$cluster <- client_clusters$cluster
+tele_train$cluster <- as.factor(tele_train$cluster)
+
+success_by_segm <- tapply(tele_train$y, tele_train$cluster, mean, na.rm = T)
+success_by_segm
 ``` 
 
 ```{r}
