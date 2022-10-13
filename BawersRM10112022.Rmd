@@ -309,8 +309,10 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 # K-means Clustering
 
 ```{r, cache = TRUE}
-
-client_clusters <- kmeans(tele_train, 5)
+tele_norm_cluster <- tele_norm
+tele_norm_cluster$yyes <- NULL
+str(tele_norm_cluster)
+client_clusters <- kmeans(tele_norm_cluster, 5)
 
 client_clusters$size
 # Thankfully, there's not a cluster that's overtly large or small here, which would show that k should have been set differently (if the group were too large, we might have needed another k. If it were too small, our clusters would be too, so that we could actually remove some k's).
@@ -323,10 +325,11 @@ client_clusters$centers
 # Cluster 4: Other?
 # Cluster 5: Other?
 
-tele_train$cluster <- client_clusters$cluster
-tele_train$cluster <- as.factor(tele_train$cluster)
+tele_norm_cluster$y <- tele_norm$yyes
+tele_norm_cluster$cluster <- client_clusters$cluster
+tele_norm_cluster$cluster <- as.factor(tele_norm_cluster$cluster)
 
-success_by_segm <- tapply(tele_train$y, tele_train$cluster, mean, na.rm = T)
+success_by_segm <- tapply(tele_norm_cluster$y, tele_norm_cluster$cluster, mean, na.rm = T)
 success_by_segm
 ``` 
 
@@ -334,29 +337,31 @@ success_by_segm
 # First Improvement - Checking the Number of Clusters
 
 # Distance within clusters:
-kmeans.wss.k <- function(tele_train, k){
-  km = kmeans(tele_train, k)
+kmeans.wss.k <- function(tele_norm_cluster, k){
+  km = kmeans(tele_norm_cluster, k)
   return (km$tot.withinss)
 }
 
+# k = 4
+kmeans.wss.k(tele_norm_cluster, 4)
 # k = 5
-kmeans.wss.k(tele_train, 5)
+kmeans.wss.k(tele_norm_cluster, 5)
 # k = 6
-kmeans.wss.k(tele_train, 6)
+kmeans.wss.k(tele_norm_cluster, 6)
 
 kmeans.dis <- function(data_z, maxk){
   dis=(nrow(data_z)-1)*sum(apply(data_z,2,var))
-  dis[2:maxk]=sapply (2:maxk, kmeans.wss.k, tele_train=tele_train)
+  dis[2:maxk]=sapply (2:maxk, kmeans.wss.k, tele_norm_cluster=tele_norm_cluster)
   return(dis) }
 
 maxk = 30
-dis = kmeans.dis(tele_train, maxk)
+dis = kmeans.dis(tele_norm_cluster, maxk)
 
 plot(1:maxk, dis, type = 'b', xlab="Number of Clusters", ylab="Distortion", col="black")
 
 # So, maybe four clusters suffice? Let's check the intra-cluster similarity relative to 5.
 
-kmeans.wss.k(tele_train, 4)
+kmeans.wss.k(tele_norm_cluster, 4)
 # That's only 932 more than k = 5. Let's go for it!
 ```
 
