@@ -308,7 +308,7 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 
 # K-means Clustering
 
-```{r}
+```{r, cache = TRUE}
 
 client_clusters <- kmeans(tele_train, 5)
 
@@ -317,14 +317,52 @@ client_clusters$size
 
 client_clusters$centers
 
-# Cluster 1: 
-# Cluster 2:
-# Cluster 3:
-# Cluster 4:
-# Cluster 5:
+# Cluster 1: June, Rich (high cons.price.idx)
+# Cluster 2: Single, 
+# Cluster 3: Married,
+# Cluster 4: Other?
+# Cluster 5: Other?
+
+``` 
+
+```{r}
+# First Improvement - Checking the Number of Clusters
+
+# Distance within clusters:
+kmeans.wss.k <- function(tele_train, k){
+  km = kmeans(tele_train, k)
+  return (km$tot.withinss)
+}
+
+# k = 5
+kmeans.wss.k(tele_train, 5)
+# k = 6
+kmeans.wss.k(tele_train, 6)
+
+kmeans.dis <- function(data_z, maxk){
+  dis=(nrow(data_z)-1)*sum(apply(data_z,2,var))
+  dis[2:maxk]=sapply (2:maxk, kmeans.wss.k, tele_train=tele_train)
+  return(dis) }
+
+maxk = 30
+dis = kmeans.dis(tele_train, maxk)
+
+plot(1:maxk, dis, type = 'b', xlab="Number of Clusters", ylab="Distortion", col="black")
+
+# So, maybe four clusters suffice? Let's check the intra-cluster similarity relative to 5.
+
+kmeans.wss.k(tele_train, 4)
+# That's only 932 more than k = 5. Let's go for it!
 ```
 
-## Improving our K-means Clustering Model
+## Applying K-means Clustering to the Test Set
+
+```{r}
+
+```
+
+
+## Improving our K-means Clustering Model 
 
 ```{r}
 
