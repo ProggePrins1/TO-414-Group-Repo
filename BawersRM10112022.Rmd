@@ -300,7 +300,7 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 
 ## Improving our Combined Prediction Model - An Interesting Task
 
-> NOTE TO US: Let's just explain here that the way to improve a combined model is by improving its roots (being the ANN< LR, and kNN). That said, if we were allowed to add weights to the sum, things would be interesting. We'd add a higher weight to the most accurate model and similarly penalize less accurate models. 
+> NOTE TO US: Let's just explain here that the way to improve a combined model is by improving its roots (being the ANN, LR, and kNN). That said, if we were allowed to add weights to the sum, things would be interesting. We'd add a higher weight to the most accurate model and similarly penalize less accurate models. 
 
 ## Interpreting our Combined Prediction Model
 
@@ -310,6 +310,18 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 
 ```{r}
 
+client_clusters <- kmeans(tele_train, 5)
+
+client_clusters$size
+# Thankfully, there's not a cluster that's overtly large or small here, which would show that k should have been set differently (if the group were too large, we might have needed another k. If it were too small, our clusters would be too, so that we could actually remove some k's).
+
+client_clusters$centers
+
+# Cluster 1: 
+# Cluster 2:
+# Cluster 3:
+# Cluster 4:
+# Cluster 5:
 ```
 
 ## Improving our K-means Clustering Model
