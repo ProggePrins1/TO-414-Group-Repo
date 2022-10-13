@@ -309,6 +309,7 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 # K-means Clustering
 
 ```{r, cache = TRUE}
+set.seed(123)
 tele_norm_cluster <- tele_norm
 tele_norm_cluster$yyes <- NULL
 str(tele_norm_cluster)
