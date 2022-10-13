@@ -298,6 +298,10 @@ CrossTable(tele_test_labels, combinedresults, prop.chisq = F)
 confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_test_labels), positive = "1")
 ```
 
+## Improving our Combined Prediction Model - An Interesting Task
+
+> NOTE TO US: Let's just explain here that the way to improve a combined model is by improving its roots (being the ANN< LR, and kNN). That said, if we were allowed to add weights to the sum, things would be interesting. We'd add a higher weight to the most accurate model and similarly penalize less accurate models. 
+
 ## Interpreting our Combined Prediction Model
 
 > Text here. 

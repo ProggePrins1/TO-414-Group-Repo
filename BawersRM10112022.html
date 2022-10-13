@@ -1728,16 +1728,19 @@ Analysis</h2>
 <span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>tele_norm <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">lapply</span>(tele_random, normalize))</span></code></pre></div>
 </div>
-<div id="lets-create-a-train-and-test-dataset" class="section level2" number="1.3">
-<h2><span class="header-section-number">1.3</span> Let’s create a train
-and test dataset</h2>
+</div>
+<div id="ann" class="section level1" number="2">
+<h1><span class="header-section-number">2</span> ANN</h1>
+<div id="lets-create-a-train-and-test-dataset" class="section level2" number="2.1">
+<h2><span class="header-section-number">2.1</span> Let’s Create a Train
+and Test Dataset</h2>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#For this example, we used a threshold of 20% for the train, and 80% for the test. </span></span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>tele_train <span class="ot">&lt;-</span> tele_norm[<span class="dv">1</span><span class="sc">:</span><span class="dv">8238</span>,]</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>tele_test <span class="ot">&lt;-</span> tele_norm[<span class="dv">8239</span><span class="sc">:</span><span class="dv">41188</span>,]</span></code></pre></div>
 </div>
-<div id="lets-build-our-model" class="section level2" number="1.4">
-<h2><span class="header-section-number">1.4</span> Let’s Build our
+<div id="building-our-initial-model" class="section level2" number="2.2">
+<h2><span class="header-section-number">2.2</span> Building our Initial
 Model</h2>
 <div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(neuralnet)</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -1745,9 +1748,9 @@ Model</h2>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(tele_model)</span>
 <span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won&#39;t be able to see this for some reason... - just take our word for it!)</span></span></code></pre></div>
-<div id="reordering-the-columns" class="section level3" number="1.4.1">
-<h3><span class="header-section-number">1.4.1</span> Reordering the
-columns</h3>
+<div id="reordering-the-columns" class="section level3" number="2.2.1">
+<h3><span class="header-section-number">2.2.1</span> Reordering the
+Columns</h3>
 <p>Before we do anything with our model_results, for convenience, let’s
 put <em>yyes</em> as the <strong>first column</strong> in our
 datasets.</p>
@@ -1760,13 +1763,9 @@ datasets.</p>
 <span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">relocate</span>(yyes)</span></code></pre></div>
 </div>
 </div>
-</div>
-<div id="lets-do-some-comparisons" class="section level1" number="2">
-<h1><span class="header-section-number">2</span> Let’s Do Some
-Comparisons</h1>
-<div id="initial-ann-model" class="section level2" number="2.1">
-<h2><span class="header-section-number">2.1</span> Initial ANN
-Model</h2>
+<div id="initial-results-from-our-ann-model" class="section level2" number="2.3">
+<h2><span class="header-section-number">2.3</span> Initial Results from
+our ANN Model</h2>
 <div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># First, we must load the neuralnet package.</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(neuralnet)</span>
@@ -1855,15 +1854,15 @@ Model</h2>
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
 </div>
-<div id="interpreting-our-initial-ann" class="section level2" number="2.2">
-<h2><span class="header-section-number">2.2</span> Interpreting Our
+<div id="interpreting-our-initial-ann" class="section level2" number="2.4">
+<h2><span class="header-section-number">2.4</span> Interpreting Our
 Initial ANN</h2>
 <blockquote>
 <p>In our ANN, we see that…</p>
 </blockquote>
 </div>
-<div id="improving-our-ann-model" class="section level2" number="2.3">
-<h2><span class="header-section-number">2.3</span> Improving Our ANN
+<div id="improving-our-ann-model" class="section level2" number="2.5">
+<h2><span class="header-section-number">2.5</span> Improving Our ANN
 Model</h2>
 <div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Let&#39;s do everything again, but now adding some additional layers to the dataset.</span></span></code></pre></div>
 </div>
@@ -2420,6 +2419,117 @@ Model</h2>
 <div id="a-combined-prediction-model" class="section level1" number="5">
 <h1><span class="header-section-number">5</span> A Combined Prediction
 Model</h1>
+<p>To start building a combined prediction model, we need a new
+dataframe with all output values (0,1).</p>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a>combinedoutputs <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(yyes_prediction, binarypredictionlog, tele_test_pred_knn)</span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(combinedoutputs) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ANN&quot;</span>, <span class="st">&quot;Logistic Regression&quot;</span>, <span class="st">&quot;kNN&quot;</span>)</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb47-4"><a href="#cb47-4" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(combinedoutputs)</span></code></pre></div>
+<pre><code>## &#39;data.frame&#39;:    32950 obs. of  3 variables:
+##  $ ANN                : num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ Logistic Regression: num  0 0 0 1 0 0 0 0 0 0 ...
+##  $ kNN                : Factor w/ 2 levels &quot;0&quot;,&quot;1&quot;: 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+<div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="co"># We see that our kNN column is a factor. Let&#39;s change that into a numeric for our ifelse later on.</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>combinedoutputs<span class="sc">$</span>kNN <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(combinedoutputs<span class="sc">$</span>kNN <span class="sc">==</span> <span class="st">&quot;0&quot;</span>, <span class="dv">0</span>, <span class="dv">1</span>)</span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Let&#39;s have a look again...</span></span>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(combinedoutputs)</span></code></pre></div>
+<pre><code>## &#39;data.frame&#39;:    32950 obs. of  3 variables:
+##  $ ANN                : num  0 0 0 0 0 0 0 0 0 0 ...
+##  $ Logistic Regression: num  0 0 0 1 0 0 0 0 0 0 ...
+##  $ kNN                : num  0 0 0 0 0 0 0 0 0 0 ...</code></pre>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(combinedoutputs)</span></code></pre></div>
+<pre><code>##       ANN          Logistic Regression      kNN        
+##  Min.   :0.00000   Min.   :0.00000     Min.   :0.0000  
+##  1st Qu.:0.00000   1st Qu.:0.00000     1st Qu.:0.0000  
+##  Median :0.00000   Median :0.00000     Median :0.0000  
+##  Mean   :0.07196   Mean   :0.04115     Mean   :0.1015  
+##  3rd Qu.:0.00000   3rd Qu.:0.00000     3rd Qu.:0.0000  
+##  Max.   :1.00000   Max.   :1.00000     Max.   :1.0000</code></pre>
+<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(combinedoutputs)</span></code></pre></div>
+<pre><code>##      ANN Logistic Regression kNN
+## 8239   0                   0   0
+## 8240   0                   0   0
+## 8241   0                   0   0
+## 8242   0                   1   0
+## 8243   0                   0   0
+## 8244   0                   0   0</code></pre>
+<div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Everything&#39;s all good! Let&#39;s now have a real combined output.</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a>combinedoutputs<span class="sc">$</span>mix <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(combinedoutputs<span class="sc">$</span>ANN <span class="sc">+</span> </span>
+<span id="cb55-4"><a href="#cb55-4" aria-hidden="true" tabindex="-1"></a>                                combinedoutputs<span class="sc">$</span><span class="st">`</span><span class="at">Logistic Regression</span><span class="st">`</span> <span class="sc">+</span> </span>
+<span id="cb55-5"><a href="#cb55-5" aria-hidden="true" tabindex="-1"></a>                                combinedoutputs<span class="sc">$</span>kNN <span class="sc">&gt;</span> <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">0</span>)</span>
+<span id="cb55-6"><a href="#cb55-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-7"><a href="#cb55-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Great! Now let&#39;s make a Cross Table and Confusion matrix again.</span></span>
+<span id="cb55-8"><a href="#cb55-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-9"><a href="#cb55-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Store mix results into a numeric.</span></span>
+<span id="cb55-10"><a href="#cb55-10" aria-hidden="true" tabindex="-1"></a>combinedresults <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(combinedoutputs<span class="sc">$</span>mix)</span>
+<span id="cb55-11"><a href="#cb55-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb55-12"><a href="#cb55-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a cross table</span></span>
+<span id="cb55-13"><a href="#cb55-13" aria-hidden="true" tabindex="-1"></a><span class="fu">CrossTable</span>(tele_test_labels, combinedresults, <span class="at">prop.chisq =</span> F)</span></code></pre></div>
+<pre><code>## 
+##  
+##    Cell Contents
+## |-------------------------|
+## |                       N |
+## |           N / Row Total |
+## |           N / Col Total |
+## |         N / Table Total |
+## |-------------------------|
+## 
+##  
+## Total Observations in Table:  32950 
+## 
+##  
+##                  | combinedresults 
+## tele_test_labels |         0 |         1 | Row Total | 
+## -----------------|-----------|-----------|-----------|
+##                0 |     28674 |       524 |     29198 | 
+##                  |     0.982 |     0.018 |     0.886 | 
+##                  |     0.908 |     0.379 |           | 
+##                  |     0.870 |     0.016 |           | 
+## -----------------|-----------|-----------|-----------|
+##                1 |      2895 |       857 |      3752 | 
+##                  |     0.772 |     0.228 |     0.114 | 
+##                  |     0.092 |     0.621 |           | 
+##                  |     0.088 |     0.026 |           | 
+## -----------------|-----------|-----------|-----------|
+##     Column Total |     31569 |      1381 |     32950 | 
+##                  |     0.958 |     0.042 |           | 
+## -----------------|-----------|-----------|-----------|
+## 
+## </code></pre>
+<div class="sourceCode" id="cb57"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a confusion matrix</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a><span class="fu">confusionMatrix</span>(<span class="at">data =</span> <span class="fu">as.factor</span>(combinedresults), <span class="at">reference =</span> <span class="fu">as.factor</span>(tele_test_labels), <span class="at">positive =</span> <span class="st">&quot;1&quot;</span>)</span></code></pre></div>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction     0     1
+##          0 28674  2895
+##          1   524   857
+##                                           
+##                Accuracy : 0.8962          
+##                  95% CI : (0.8929, 0.8995)
+##     No Information Rate : 0.8861          
+##     P-Value [Acc &gt; NIR] : 2.587e-09       
+##                                           
+##                   Kappa : 0.2904          
+##                                           
+##  Mcnemar&#39;s Test P-Value : &lt; 2.2e-16       
+##                                           
+##             Sensitivity : 0.22841         
+##             Specificity : 0.98205         
+##          Pos Pred Value : 0.62056         
+##          Neg Pred Value : 0.90830         
+##              Prevalence : 0.11387         
+##          Detection Rate : 0.02601         
+##    Detection Prevalence : 0.04191         
+##       Balanced Accuracy : 0.60523         
+##                                           
+##        &#39;Positive&#39; Class : 1               
+## </code></pre>
 <div id="interpreting-our-combined-prediction-model" class="section level2" number="5.1">
 <h2><span class="header-section-number">5.1</span> Interpreting our
 Combined Prediction Model</h2>
