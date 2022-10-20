@@ -1,8 +1,6 @@
-base
-methods
-datasets
-utils
-grDevices
-graphics
-stats
 neuralnet
+gmodels
+ggplot2
+lattice
+caret
+class
