@@ -62,8 +62,6 @@ tele_norm
 # K-means Clustering
 ## Prepare for K-means clustering
 ```{r, cache = TRUE}
-# Set the seed to save our results
-set.seed(123)
 
 # Create a new dataframe based on normalized data
 tele_norm_cluster <- tele_norm
@@ -74,7 +72,9 @@ str(tele_norm_cluster)
 ```
 
 ## Determine the approrpiate number of clusters
-```{r}
+```{r, cache = TRUE}
+
+set.seed(357)
 # Create a function to set up k-means models with different k
 kmeans.wss.k <- function(tele_norm_cluster, k){
   km = kmeans(tele_norm_cluster, k)
@@ -82,6 +82,7 @@ kmeans.wss.k <- function(tele_norm_cluster, k){
 }
 
 # Call the function with k = 4, k = 5, k = 6
+kmeans.wss.k(tele_norm_cluster, 3)
 kmeans.wss.k(tele_norm_cluster, 4)
 kmeans.wss.k(tele_norm_cluster, 5)
 kmeans.wss.k(tele_norm_cluster, 6)
@@ -95,6 +96,7 @@ maxk = 30
 dis = kmeans.dis(tele_norm_cluster, maxk)
 plot(1:maxk, dis, type = 'b', xlab = "Number of Clusters", ylab = "Distortion", col = "black")
 ```
+
 There seems to be an inflection point at k = 5, so we will use this number of clusters.
 
 ## Cluster the data
