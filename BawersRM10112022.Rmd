@@ -102,7 +102,7 @@ There seems to be an inflection point at k = 5, so we will use this number of cl
 ## Cluster the data
 ```{r, cache = TRUE}
 # Set the seed to save our results
-set.seed(357)
+set.seed(123)
 
 # Apply the k-means algorithm with 5 clusters
 client_clusters <- kmeans(tele_norm_cluster, 5)
@@ -128,56 +128,44 @@ success_by_segm
 ## Preparing datasets for modeling
 ```{r}
 # Create dataframes with the three clusters using conditional filtering
-cluster1 = tele_norm_cluster[tele_norm_cluster$cluster == 1,]
-cluster3 = tele_norm_cluster[tele_norm_cluster$cluster == 3,]
-cluster5 = tele_norm_cluster[tele_norm_cluster$cluster == 5,]
+cluster2 <- tele_norm_cluster[tele_norm_cluster$cluster == 2,]
+cluster4 <- tele_norm_cluster[tele_norm_cluster$cluster == 4,]
+cluster5 <- tele_norm_cluster[tele_norm_cluster$cluster == 5,]
 ```
 
 ## Let's create train and test datasets for each cluster
 ```{r}
 # Do an approximate 80-20 train-test split
-cluster1$cluster <- NULL
-tele_train1 <- cluster1[1:8628,]
-tele_test1 <- cluster1[8629:10785,]
+cluster2$cluster <- NULL
+eightyprows2 <- floor(0.8*nrow(cluster2))
+tele_train2 <- cluster2[1:eightyprows2,]
+tele_test2 <- cluster2[(eightyprows2+1):nrow(cluster2),]
 
-cluster3$cluster <- NULL
-tele_train3 <- cluster3[1:7792,]
-tele_test3 <- cluster3[7793:9741,]
+cluster4$cluster <- NULL
+eightyprows4 <- floor(0.8*nrow(cluster4))
+tele_train4 <- cluster4[1:eightyprows4,]
+tele_test4 <- cluster4[(eightyprows4+1):nrow(cluster4),]
 
 cluster5$cluster <- NULL
-tele_train5 <- cluster5[1:2149,]
-tele_test5 <- cluster5[2150:2687,]
+eightyprows5 <- floor(0.8*nrow(cluster5))
+tele_train5 <- cluster5[1:floor(0.8*eightyprows5),]
+tele_test5 <- cluster5[(eightyprows5+1):nrow(cluster5),]
 ```
 
 ## Building our initial model
 
 ```{r, cache = TRUE}
 library(neuralnet)
-tele_model1 <- neuralnet(y ~ ., data = tele_train1, hidden = 1)
-plot(tele_model1)
+tele_model2 <- neuralnet(y ~ ., data = tele_train2, hidden = 1)
+plot(tele_model2)
 
-tele_model3 <- neuralnet(y ~ ., data = tele_train3, hidden = 1)
-plot(tele_model3)
+tele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 1)
+plot(tele_model4)
 
 tele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 1)
 plot(tele_model5)
 
 # What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won't be able to see this for some reason... - just take our word for it!)
-```
-
-### Reordering the Columns
-
-Before we do anything with our model_results, for convenience, let's put *yyes* as the **first column** in our datasets.
-```{r, eval = FALSE}
-
-library(tidyverse)
-
-tele_train %>% 
-  relocate(yyes)
-
-tele_test %>%
-  relocate(yyes)
-
 ```
 
 ## Initial Results from our ANN Model
@@ -186,20 +174,28 @@ tele_test %>%
 
 library(neuralnet)
 
-modelresults <- neuralnet::compute(tele_model, tele_test[2:54])
+modelresults2 <- neuralnet::compute(tele_model2, tele_test2[1:53])
+modelresults4 <- neuralnet::compute(tele_model4, tele_test4[1:53])
+modelresults5 <- neuralnet::compute(tele_model5, tele_test5[1:53])
 
-predictedtele <- modelresults$net.result
-summary(predictedtele)
+predictedtele2 <- modelresults2$net.result
+summary(predictedtele2)
+predictedtele4 <- modelresults4$net.result
+summary(predictedtele4)
+predictedtele5 <- modelresults5$net.result
+summary(predictedtele5)
 # This seems to be all correct thus far... now, let's actually create a binary value.
 
-yyes_prediction <- ifelse(predictedtele < 0.5, 0, 1)
+yyes_prediction2 <- ifelse(predictedtele2 < 0.5, 0, 1)
+yyes_prediction4 <- ifelse(predictedtele4 < 0.5, 0, 1)
+yyes_prediction5 <- ifelse(predictedtele5 < 0.5, 0, 1)
 
 # Now, we must make a CrossTable.
 
 library(gmodels)
 library(caret)
 
-CrossTable(tele_test$yyes, yyes_prediction, prop.chisq = FALSE)
+CrossTable(tele_test2$y, yyes_prediction2, prop.chisq = FALSE)
 
 # Let's also create a confusion matrix.
 confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_test$yyes), positive = "1")
