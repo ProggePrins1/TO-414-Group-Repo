@@ -232,17 +232,79 @@ With a cut-off point at 0.5, our ANN model predicts that someone will say no 185
 ## Improving Our ANN Model
 
 ```{r}
-# Let's do everything again, but now adding some additional layers to the dataset.
+# Let's do everything again, but now adding some additional layers to the ANN cluster models.
+
+# Choosing the hidden levels is somewhat arbitrary. To not overload our computers, we went for hidden = 2.
+
+improvedtele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 2)
+plot(tele_model2)
+
+improvedtele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 2, stepmax = 1e+08)
+plot(tele_model4)
+
+improvedtele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 2, stepmax = 1e+08)
+plot(tele_model5)
+
+```
+
+## Results from our Improved ANN Model
+
+```{r}
+# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
+improvedmodelresults2 <- compute(improvedtele_model2, tele_test2[1:53])
+improvedmodelresults4 <- compute(improvedtele_model4, tele_test4[1:53])
+improvedmodelresults5 <- compute(improvedtele_model5, tele_test5[1:53])
+
+improvedpredictedtele2 <- improvedmodelresults2$net.result
+summary(improvedpredictedtele2)
+# We already see that the values stay incredibly low. Again, this is because the success rates of this cluster are incredibly low.
+# Note, again, that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
+improvedpredictedtele4 <- improvedmodelresults4$net.result
+summary(improvedpredictedtele4)
+# See interpretation for predictedtele2 - the same applies here.
+improvedpredictedtele5 <- improvedmodelresults5$net.result
+summary(improvedpredictedtele5)
+# This seems to be all correct thus far... now, let's actually create a binary value.
+
+improvedannprediction2 <- ifelse(improvedpredictedtele2 < 0.5, 0, 1)
+improvedannprediction4 <- ifelse(improvedpredictedtele4 < 0.22, 0, 1)
+improvedannprediction5 <- ifelse(improvedpredictedtele5 < 0.18, 0, 1)
+
+# Now, let's create a Cross Table and Confusion Matrix.
+
+# For cluster = 2
+CrossTable(tele_test2$y, improvedannprediction2, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction2), reference = as.factor(tele_test2$y), positive = "1")
+
+# For cluster = 4
+CrossTable(tele_test4$y, improvedannprediction4, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction4), reference = as.factor(tele_test4$y), positive = "1")
+
+# For cluster = 5
+CrossTable(tele_test5$y, improvedannprediction5, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction5), reference = as.factor(tele_test5$y), positive = "1")
 
 ```
 
 ## Interpreting our Improved ANN Model
 
+> For this section, we *DID* adjust the cut-off points using a trial-and-error method to ensure that the accuracy estimates are as high as possible. As a rule of thumb, we tried to prevent as many false negatives as possible whilst preventing that false positives would grow significantly (line of thought: $6 in lost sales > $1 in costs, but not worth it if one decrease in FN comes paired with 6 or more increases in FP).
+
 ### Cluster 2
+
+For cluster 2, it's still best to have a cut-off point of 0.5, purely because it's simply not worth it to call anyone in this segment given the ANN model. Lowering the cut-off point would result in a lot of costs from calling people who wouldn't say yes to our offering. As such, we'd incur losses of 108 * - 6 = -€648. That said, if we were to call everyone, we'd have profits of  108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657 (although we'd still make losses). 
 
 ### Cluster 4
 
+For cluster 4, it's best to have a cut-off point of 0.22, again because our ANN has a very low prediction value given the low success rate of the fourth cluster AND because reducing false negatives (-6) is more important than lowering false positives (-1). The profits in this case would be 3 * 6 - 54 * 6 - 3 * 1 = -€309, so unfortunately still negative. Incremental profits, however, would be positive. If we were to call everyone, we'd have profits of 57 * 6 - 1242 * 1 = -€900, making incremental profits of 900 - 309 = €591 by implementing an ANN model.
+
 ### Cluster 5
+
+For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very low prediction value of 0.03 for even observations that actually said "yes" in real life to our call. The total costs in this case would be 81 * 6 = 486 in lost sales and 8 * 1 = 8 in costs, resulting in a total of €494. Profits would be €6 * 1 - €494 = -€488  Still not incredible, but the main finding is that cluster 5 might not be worth it to call (oh, and don't forget to compare this to calling all people in the test set of cluster 5, with 1855 * 1 = €1855, and revenue of 82 * €6 = €492. Profits = €492 - €1855 = -€1363). So, based on the status quo, we'd still gain 1363 - 488 = €875.
+
+### Final Conclusion
+
+> Simply put, ANN works. We cannot make these low-success clusters into money machines, and the model is not perfect in preventing us from calling anyone who will say no, but we have saved costs tremendously by using ANN. Savings are 657 + 591 + 875 = €2123.
 
 
 # Logistic Regression
