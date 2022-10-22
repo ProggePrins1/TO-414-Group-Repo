@@ -308,6 +308,7 @@ For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very 
 
 
 
+
 # Logistic Regression
 
 We have thankfully already cleaned the data up now. Additionally, Logistic Regression forces dummy variables and doesn't need normalized values. So, we have to make sure that we create cluster sets that are *not normalized*.
@@ -337,7 +338,7 @@ tele_train4_log <- cluster4[1:nrow(tele_train4),]
 tele_test4_log <- cluster4[(nrow(tele_train4)+1):nrow(cluster4),]
 
 tele_train5_log <- cluster5[1:nrow(tele_train5),]
-tele_test5_log <- cluster5[(nrow(tele_train5)+1):nrow(cluster4),]
+tele_test5_log <- cluster5[(nrow(tele_train5)+1):nrow(cluster5),]
 
 # In the meantime, let's store our test labels for the test set somewhere else..
 tele_test2_log_labels <- tele_test2_log$y
@@ -362,7 +363,7 @@ summary(predictionmodelt4)
 predictionmodelt5 <- glm(y ~ ., data = tele_train5_log, family = "binomial")
 summary(predictionmodelt5)
 
-# Unfortunately, we get an error here. It appears to be the case that for our tele_train5_log, we have a predictor variable which only has one value, causing the regression to fail. Let's find and fix this issue.
+# Unfortunately, we get an error here. It appears to be the case that for our tele_train5_log, we have a predictor variable which only has one level, causing the regression to fail. Let's find and fix this issue.
 # To find the column with only one factorized value, we can use lapply() and unique as an argument.
 
 lapply(tele_train5_log, unique)
@@ -370,7 +371,6 @@ lapply(tele_train5_log, unique)
 sum(tele_train5_log$contact == "cellular")
 sum(tele_train5_log$contact == "telephone")
 # So, the only solution here is to remove the contact variable from the train set.
-
 tele_train5_log$contact <- NULL
 # Note that pdaysdummy only contains the value 0 and is thus pointless in our glm. Let's remove that column, too.
 tele_train5_log$pdaysdummy <- NULL
@@ -398,14 +398,14 @@ summary(predictionmodelt5)
 ```{r}
 binarypredictionlogt2 <- ifelse(predict(predictionmodelt2, newdata = tele_test2_log, type = "response") < 0.5, 0, 1)
 
-binarypredictionlogt4 <- ifelse(predict(predictionmodelt2, newdata = tele_test4_log, type = "response") < 0.5, 0, 1)
+binarypredictionlogt4 <- ifelse(predict(predictionmodelt4, newdata = tele_test4_log, type = "response") < 0.5, 0, 1)
 
-binarypredictionlogt5 <- ifelse(predict(predictionmodelt2, newdata = tele_test5_log, type = "response") < 0.5, 0, 1)
+binarypredictionlogt5 <- ifelse(predict(predictionmodelt5, newdata = tele_test5_log, type = "response") < 0.5, 0, 1)
 
 ## In all prediction models, we have the issue that our test dataset has some values for "month" that aren't in the train set. R now has no clue how, for instance, October impacts the y column, and thus cannot run predictions.
 ```
 
-Technically, we could just remove the month column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with default = yes in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
+Technically, we could just remove the month column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with month = the month needed in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
 
 ## Removing Columns in Linear Regression
 
@@ -413,10 +413,7 @@ Technically, we could just remove the month column in both our regression and th
 
 # CLUSTER 2!!!!!!
 
-improvedpredictionmodelt2 <- glm(y ~. - education - age -day_of_week -emp.var.rate
-                                 - cons.price.idx - cons.conf.idx - nr.employed -pdaysdummy
-                                 - campaign -previous -euribor3m -contact -default
-                                 - loan - housing, data = tele_train2_log, family = "binomial")
+improvedpredictionmodelt2 <- glm(y ~ job + marital + month, data = tele_train2_log, family = "binomial")
 summary(improvedpredictionmodelt2)
 
 # CLUSTER 4!!!!!!
@@ -429,13 +426,65 @@ alias(predictionmodelt4)
 
 # Improvement procedure: sequentially remove variables with p > 0.10. 
 
-improvedpredictionmodelt4 <- glm(y ~ . -month -job -age -marital - default
-                                 - housing - loan - campaign - previous -emp.var.rate
-                                 - cons.price.idx - cons.conf.idx - pdaysdummy, data = tele_train4_log, family = "binomial")
+improvedpredictionmodelt4 <- glm(y ~ education + contact + day_of_week + poutcome + euribor3m + nr.employed, data = tele_train4_log, family = "binomial")
 summary(improvedpredictionmodelt4)
-```
 
 # CLUSTER 5!!!!!!
+# Let's remove nr.employed first because it contains NA's.
+improvedpredictionmodelt5 <- glm(y ~. - nr.employed, data = tele_train5_log, family = "binomial")
+summary(improvedpredictionmodelt5)
+# We see that, thankfully, now we have more realistic p-values! We can now use our normal
+# procedure to refine the regression.
+
+improvedpredictionmodelt5 <- glm(y ~ job + marital + housing + euribor3m, data = tele_train5_log, family = "binomial")
+summary(improvedpredictionmodelt5)
+
+```
+
+## Rerun Prediction Models
+
+```{r}
+
+# Cluster 2
+
+improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
+# Because it was never explained in the lecture how to solve the issue of a factor value in the test set that was 
+# not in the train set, we had to devise our own solution to this issue.
+# First, we looked at the number of values that had the month october. 
+tele_test2_log[which(tele_test2_log$month == "oct"),]
+# It turns out to be only one person, who would have said NO.
+# Now we can opt for one practical solution, although it's not "pretty". 
+# We have to remove this row from our test set and our labels set. Unfortunately, there is no other option.
+# We did not have to do this for the other regression models because the months were not significant to start with.
+# Yet, in cluster 2, the monthjul is a significant variable.
+
+which(tele_test2_log$month == "oct", arr.ind = T)
+# we now know it's row 1723. So, let's remove that row.
+tele_test2_log <- tele_test2_log[-1723,]
+
+# To remove a row, change labels into a df.
+tele_test2_log_labels <- as.data.frame(tele_test2_log_labels)
+
+# Let's remove the 1723rd row in our df.
+tele_test2_log_labels <- tele_test2_log_labels[-1723,]
+
+CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
+
+improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
+CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
+
+# Cluster 4
+
+improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.4, 0, 1)
+CrossTable(tele_test4_log_labels, improvedbinarypredictionlogt4, prop.chisq = FALSE)
+
+# Cluster 5
+
+improvedbinarypredictionlogt5 <- ifelse(predict(improvedpredictionmodelt5, newdata = tele_test5_log, type = "response") < 0.4, 0, 1)
+CrossTable(tele_test5_log_labels, improvedbinarypredictionlogt5, prop.chisq = FALSE)
+
+```
+
 
 ### Addressing Multicollinearity (cor() and alias())
 
