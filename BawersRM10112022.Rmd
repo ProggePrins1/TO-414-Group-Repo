@@ -376,7 +376,7 @@ tele_train5_log$contact <- NULL
 tele_train5_log$pdaysdummy <- NULL
 
 predictionmodelt5 <- glm(y ~ ., tele_train5_log, family = "binomial")
-# now we get two more erros, so let's fix those too.
+# now we get two more warnings, so let's fix those too.
 # first, we see that two predictors are perfectly correlated. By merely looking at the dataset, we denote that this must be between previous and poutcome. Everyone who was called previously had a failure. Since multicollinearity can hurt our model, we must remove one of the variables.
 
 # Let's confirm this first
@@ -391,6 +391,30 @@ predictionmodelt5 <- glm(y ~ ., tele_train5_log, family = "binomial")
 summary(predictionmodelt5)
 ```
 
+> The thing is that our models are nowhere near strong. We still have tons of variables that will likely be highly multicollinear, and we actually must remove variables before we can run predictions. Below is explained why.
+
+## Using Linear Regression on the Test Data - why it doesn't "just" work.
+
+```{r}
+binarypredictionlogt2 <- ifelse(predict(predictionmodelt2, newdata = tele_test2_log, type = "response") < 0.5, 0, 1)
+
+binarypredictionlogt4 <- ifelse(predict(predictionmodelt2, newdata = tele_test4_log, type = "response") < 0.5, 0, 1)
+
+binarypredictionlogt5 <- ifelse(predict(predictionmodelt2, newdata = tele_test5_log, type = "response") < 0.5, 0, 1)
+
+## In all prediction models, we have the issue that our test dataset has some values for "month" that aren't in the train set. R now has no clue how, for instance, october impacts the y column, and thus cannot run predictions.
+```
+
+Technically, we could just remove the month column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with default = yes in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
+
+## Removing Columns in Linear Regression
+
+```{r}
+
+
+
+```
+
 
 ### Addressing Multicollinearity (cor() and alias())
 
@@ -402,7 +426,6 @@ cor(tele_train_log[sapply(tele_train_log,is.numeric)])
 # We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
 # So let's do that again with the factors. One quick way is to use alias().
 
-alias(predictionmodel)
 # See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
 
 ```
