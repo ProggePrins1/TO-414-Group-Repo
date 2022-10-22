@@ -236,6 +236,15 @@ With a cut-off point at 0.5, our ANN model predicts that someone will say no 185
 
 ```
 
+## Interpreting our Improved ANN Model
+
+### Cluster 2
+
+### Cluster 4
+
+### Cluster 5
+
+
 # Logistic Regression
 
 We have thankfully already cleaned the data up now. Additionally, Logistic Regression forces dummy variables and doesn't need normalized values. That means that we can just randomize two exact sets based on the cleaned "tele" dataset. Let's do that!
