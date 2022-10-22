@@ -175,36 +175,59 @@ plot(tele_model5)
 
 library(neuralnet)
 
-modelresults2 <- neuralnet::compute(tele_model2, tele_test2[1:53])
-modelresults4 <- neuralnet::compute(tele_model4, tele_test4[1:53])
-modelresults5 <- neuralnet::compute(tele_model5, tele_test5[1:53])
+# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
+modelresults2 <- compute(tele_model2, tele_test2[1:53])
+modelresults4 <- compute(tele_model4, tele_test4[1:53])
+modelresults5 <- compute(tele_model5, tele_test5[1:53])
 
 predictedtele2 <- modelresults2$net.result
 summary(predictedtele2)
+# We already see that the values are incredibly low. This is because the success rates of this cluster are incredibly low.
+# Note that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
 predictedtele4 <- modelresults4$net.result
 summary(predictedtele4)
+# See interpretation for predictedtele2 - the same applies here.
 predictedtele5 <- modelresults5$net.result
 summary(predictedtele5)
 # This seems to be all correct thus far... now, let's actually create a binary value.
 
-yyes_prediction2 <- ifelse(predictedtele2 < 0.5, 0, 1)
-yyes_prediction4 <- ifelse(predictedtele4 < 0.5, 0, 1)
-yyes_prediction5 <- ifelse(predictedtele5 < 0.5, 0, 1)
+annprediction2 <- ifelse(predictedtele2 < 0.5, 0, 1)
+annprediction4 <- ifelse(predictedtele4 < 0.5, 0, 1)
+annprediction5 <- ifelse(predictedtele5 < 0.5, 0, 1)
 
-# Now, we must make a CrossTable.
+# Now, we must make a Cross Table and Confusion Matrix.
 
 library(gmodels)
 library(caret)
 
-CrossTable(tele_test2$y, yyes_prediction2, prop.chisq = FALSE)
+# For cluster = 2
+CrossTable(tele_test2$y, annprediction2, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction2), reference = as.factor(tele_test2$y), positive = "1")
 
-# Let's also create a confusion matrix.
-confusionMatrix(data = as.factor(yyes_prediction), reference = as.factor(tele_test$yyes), positive = "1")
+# For cluster = 4
+CrossTable(tele_test4$y, annprediction4, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction4), reference = as.factor(tele_test4$y), positive = "1")
+
+# For cluster = 5
+CrossTable(tele_test5$y, annprediction5, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction5), reference = as.factor(tele_test5$y), positive = "1")
 ```
 
 ## Interpreting Our Initial ANN
 
-> In our ANN, we see that...
+This interpretation section - and any following interpretation sections - have been separated **per cluster**. As a disclaimer, *we did try to tinker with the cut-off value of 0.5, but this either (1) only made the model less accurate because the trained model is mainly based on unsuccessful calls, or (2) increased the accuracy only marginally. In the latter case, we carried this forward but since this already counts towards "improving the model", we'll only incorporate this later on*. Instead, we'll try to improve the model by adding hidden layers later on. 
+
+### Cluster 2
+
+With a cut-off point at 0.5, our ANN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that *all 1953 people would say no*, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our ANN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person.
+
+### Cluster 4
+
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1234 times, whilst only being correct 1180 times (95.6%), whereas it predicts a yes 8 times, whilst only being correct 3 times (37.5%). This shows clear room of improvement as we now have 54 false negatives, leading to lost sales, whilst also incurring some costs by calling people who wouldn't want our offering. Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.08].
+
+### Cluster 5
+
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1854 times, whilst only being correct 1773 times (95.6%), whereas it predicts a yes 1 time, which is a correct prediction. Still, the 81 false negatives are worrying as this shows significant lost revenues. Thankfully, we wouldn't incur unnecessary costs by calling someone who wouldn't say yes anyways! Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.02].
 
 ## Improving Our ANN Model
 
