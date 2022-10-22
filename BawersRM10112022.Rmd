@@ -307,25 +307,90 @@ For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very 
 > Simply put, ANN works. We cannot make these low-success clusters into money machines, and the model is not perfect in preventing us from calling anyone who will say no, but we have saved costs tremendously by using ANN. Savings are 657 + 591 + 875 = €2123.
 
 
+
 # Logistic Regression
 
-We have thankfully already cleaned the data up now. Additionally, Logistic Regression forces dummy variables and doesn't need normalized values. That means that we can just randomize two exact sets based on the cleaned "tele" dataset. Let's do that!
+We have thankfully already cleaned the data up now. Additionally, Logistic Regression forces dummy variables and doesn't need normalized values. So, we have to make sure that we create cluster sets that are *not normalized*.
 
+## Setting up our data
 ```{r}
+# Thankfully, we set a seed before, so we can still create a new sample without messing up the order of rows and clusters.
 set.seed(12345)
 tele_random_log <- tele[sample(nrow(tele)),]
 
-# Let's create and train and test set.
-tele_train_log <- tele_random_log[1:8238,]
-tele_test_log <- tele_random_log[8239:41188,]
+# The next step is to add a cluster column to our random log dataset.
+tele_random_log$cluster <- client_clusters$cluster
+head(tele_random_log)
+# And yes, that looks all good! 
 
-# In the meantime, let's store our test labels for the test set somewhere else...
-tele_test_log_labels <- tele_test_log$y
-tele_test_log$y <- NULL
+# Now, let's create train and test sets again for clusters 2, 4, and 5. 
+# We'll stick to the 80%/20% rule to maintain consistency in our comparisons. 
 
-predictionmodel <- glm(y ~ ., data = tele_train_log, family = "binomial")
-summary(predictionmodel)
+cluster2 <- tele_random_log[tele_random_log$cluster == 2,] %>% select (-cluster) 
+cluster4 <- tele_random_log[tele_random_log$cluster == 4,] %>% select (-cluster)
+cluster5 <- tele_random_log[tele_random_log$cluster == 5,] %>% select (-cluster)
+
+tele_train2_log <- cluster2[1:nrow(tele_train2),]
+tele_test2_log <- cluster2[(nrow(tele_train2)+1):nrow(cluster2),]
+
+tele_train4_log <- cluster4[1:nrow(tele_train4),]
+tele_test4_log <- cluster4[(nrow(tele_train4)+1):nrow(cluster4),]
+
+tele_train5_log <- cluster5[1:nrow(tele_train5),]
+tele_test5_log <- cluster5[(nrow(tele_train5)+1):nrow(cluster4),]
+
+# In the meantime, let's store our test labels for the test set somewhere else..
+tele_test2_log_labels <- tele_test2_log$y
+tele_test4_log_labels <- tele_test4_log$y
+tele_test5_log_labels <- tele_test5_log$y
+
+# Of course, we now must remove the y from our test set.
+tele_test2_log$y <- NULL
+tele_test4_log$y <- NULL
+tele_test5_log$y <- NULL
+
 ```
+
+## Running the initial prediction models 
+```{r}
+predictionmodelt2 <- glm(y ~ ., data = tele_train2_log, family = "binomial")
+summary(predictionmodelt2)
+
+predictionmodelt4 <- glm(y ~ ., data = tele_train4_log, family = "binomial")
+summary(predictionmodelt4)
+
+predictionmodelt5 <- glm(y ~ ., data = tele_train5_log, family = "binomial")
+summary(predictionmodelt5)
+
+# Unfortunately, we get an error here. It appears to be the case that for our tele_train5_log, we have a predictor variable which only has one value, causing the regression to fail. Let's find and fix this issue.
+# To find the column with only one factorized value, we can use lapply() and unique as an argument.
+
+lapply(tele_train5_log, unique)
+# We see that the factor contact only has the value telephone. Let's confirm that.
+sum(tele_train5_log$contact == "cellular")
+sum(tele_train5_log$contact == "telephone")
+# So, the only solution here is to remove the contact variable from the train set.
+
+tele_train5_log$contact <- NULL
+# Note that pdaysdummy only contains the value 0 and is thus pointless in our glm. Let's remove that column, too.
+tele_train5_log$pdaysdummy <- NULL
+
+predictionmodelt5 <- glm(y ~ ., tele_train5_log, family = "binomial")
+# now we get two more erros, so let's fix those too.
+# first, we see that two predictors are perfectly correlated. By merely looking at the dataset, we denote that this must be between previous and poutcome. Everyone who was called previously had a failure. Since multicollinearity can hurt our model, we must remove one of the variables.
+
+# Let's confirm this first
+cor(as.numeric(tele_train5_log$y), as.numeric(tele_train5_log$poutcome))
+cor(as.numeric(tele_train5_log$y), tele_train5_log$previous)
+# Yes, we must remove one variable. Let's choose to drop previous.
+
+tele_train5_log$previous <- NULL
+
+predictionmodelt5 <- glm(y ~ ., tele_train5_log, family = "binomial")
+
+summary(predictionmodelt5)
+```
+
 
 ### Addressing Multicollinearity (cor() and alias())
 
