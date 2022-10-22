@@ -402,7 +402,7 @@ binarypredictionlogt4 <- ifelse(predict(predictionmodelt2, newdata = tele_test4_
 
 binarypredictionlogt5 <- ifelse(predict(predictionmodelt2, newdata = tele_test5_log, type = "response") < 0.5, 0, 1)
 
-## In all prediction models, we have the issue that our test dataset has some values for "month" that aren't in the train set. R now has no clue how, for instance, october impacts the y column, and thus cannot run predictions.
+## In all prediction models, we have the issue that our test dataset has some values for "month" that aren't in the train set. R now has no clue how, for instance, October impacts the y column, and thus cannot run predictions.
 ```
 
 Technically, we could just remove the month column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with default = yes in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
@@ -411,10 +411,31 @@ Technically, we could just remove the month column in both our regression and th
 
 ```{r}
 
+# CLUSTER 2!!!!!!
 
+improvedpredictionmodelt2 <- glm(y ~. - education - age -day_of_week -emp.var.rate
+                                 - cons.price.idx - cons.conf.idx - nr.employed -pdaysdummy
+                                 - campaign -previous -euribor3m -contact -default
+                                 - loan - housing, data = tele_train2_log, family = "binomial")
+summary(improvedpredictionmodelt2)
 
+# CLUSTER 4!!!!!!
+# Let's remove the month column.
+# We first realized the singularities warning message. This means that one variable is perfectly correlated to the other.
+# we can use alias() to find which ones.
+
+alias(predictionmodelt4)
+# Okay, so pdaysdummy is perfectly correlated to one value of poutcome. Let's drop pdaysdummy too, then.
+
+# Improvement procedure: sequentially remove variables with p > 0.10. 
+
+improvedpredictionmodelt4 <- glm(y ~ . -month -job -age -marital - default
+                                 - housing - loan - campaign - previous -emp.var.rate
+                                 - cons.price.idx - cons.conf.idx - pdaysdummy, data = tele_train4_log, family = "binomial")
+summary(improvedpredictionmodelt4)
 ```
 
+# CLUSTER 5!!!!!!
 
 ### Addressing Multicollinearity (cor() and alias())
 
@@ -424,7 +445,7 @@ First, we need to know why we get the "1 not defined because of singularities" a
 # Let's first look at the numerics, though...
 cor(tele_train_log[sapply(tele_train_log,is.numeric)])
 # We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
-# So let's do that again with the factors. One quick way is to use alias().
+
 
 # See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
 
