@@ -56,24 +56,24 @@ normalize <- function(x) {
 
 # Apply the normalization function for ANN
 tele_norm <- as.data.frame(lapply(tele_random, normalize))
-tele_norm
+str(tele_norm)
+# Looks all good!
 ```
 
 # K-means Clustering
-## Prepare for K-means clustering
+## Preparing for K-means Clustering
 ```{r, cache = TRUE}
+# Because we will have to delete the yes/no column for our cluster model, it's best to create a new dataset.
+# With that, let's create a new dataframe based on normalized data
+library(tidyverse)
+tele_norm_cluster <- tele_norm %>% select(-yyes)
 
-# Create a new dataframe based on normalized data
-tele_norm_cluster <- tele_norm
-
-# Remove the call outcome because it is the response variable
-tele_norm_cluster$yyes <- NULL
-str(tele_norm_cluster)
 ```
 
-## Determine the approrpiate number of clusters
+## Determining the Approrpiate Number of Clusters
 ```{r, cache = TRUE}
 
+# Again, let's set a seed so that we have consistent results
 set.seed(357)
 # Create a function to set up k-means models with different k
 kmeans.wss.k <- function(tele_norm_cluster, k){
