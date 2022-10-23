@@ -466,23 +466,29 @@ which(tele_test2_log$month == "oct", arr.ind = T)
 tele_test2_log <- tele_test2_log[-which(tele_test2_log$month == "oct", arr.ind = T),]
 # and now we "recreate" the labels.
 tele_test2_log_labels <- tele_test2_log$y
+tele_test2_log$y <- NULL
 
 # and all good! Let's create a crosstable now.
 
 improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
 CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
+tele_test2_log_labels <- ifelse(tele_test2_log_labels == "yes", 1, 0)
+confusionMatrix(data = as.factor(improvedbinarypredictionlogt2), reference = as.factor(tele_test2_log_labels), positive = "1")
 
 # Cluster 4
-# This cluster is somewhat straightforward; let's simply run the crosstable.
+# This cluster is somewhat straightforward; let's simply run the Crosstable.
 
-improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.4, 0, 1)
+improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.05, 0, 1)
 CrossTable(tele_test4_log_labels, improvedbinarypredictionlogt4, prop.chisq = FALSE)
+tele_test4_log_labels <- ifelse(tele_test4_log_labels == "yes", 1, 0)
+confusionMatrix(data = as.factor(improvedbinarypredictionlogt4), reference = as.factor(tele_test4_log_labels), positive = "1")
 
 # Cluster 5
-
-improvedbinarypredictionlogt5 <- ifelse(predict(improvedpredictionmodelt5, newdata = tele_test5_log, type = "response") < 0.4, 0, 1)
+# Similarly, we can simply run the Crosstable here.
+improvedbinarypredictionlogt5 <- ifelse(predict(improvedpredictionmodelt5, newdata = tele_test5_log, type = "response") < 0.05, 0, 1)
 CrossTable(tele_test5_log_labels, improvedbinarypredictionlogt5, prop.chisq = FALSE)
-
+tele_test5_log_labels <- ifelse(tele_test5_log_labels == "yes", 1, 0)
+confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.factor(tele_test5_log_labels), positive = "1")
 ```
 
 
@@ -526,25 +532,6 @@ CrossTable(tele_test_log_labels, binarypredictionlog, prop.chisq = FALSE)
 tele_test_log_labels_y <- ifelse(tele_test_log_labels == "yes", 1, 0)
 
 confusionMatrix(data = as.factor(binarypredictionlog), reference = as.factor(tele_test_log_labels_y), positive = "1")
-```
-
-## Improving our Logistic Regression
-
-We already saw that a lot of our variables in the initial glm were insignificant. To have a more robust glm, we must remove some of these variables, which is done below.
-
-```{r}
-# Let's first get rid of ALL variables with a p-value exceeding 0.10; thankfully, this also means that we get rid of "default" and the somewhat annoying multicollinearity between housing and loan [unknown].
-
-predictionmodel2 <- glm(y ~ age + job + contact + month + day_of_week + campaign + poutcome + emp.var.rate + cons.price.idx + cons.conf.idx, data = tele_train_log, family = "binomial")
-
-summary(predictionmodel2)
-
-binarypredictionlog2 <- ifelse(predict(predictionmodel2, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
-
-CrossTable(tele_test_log_labels, binarypredictionlog2, prop.chisq = FALSE)
-
-confusionMatrix(data = as.factor(binarypredictionlog2), reference = as.factor(tele_test_log_labels_y), positive = "1")
-
 ```
 
 ## Interpreting our Logistic Regression 
