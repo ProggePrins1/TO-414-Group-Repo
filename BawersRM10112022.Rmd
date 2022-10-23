@@ -491,49 +491,6 @@ tele_test5_log_labels <- ifelse(tele_test5_log_labels == "yes", 1, 0)
 confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.factor(tele_test5_log_labels), positive = "1")
 ```
 
-
-### Addressing Multicollinearity (cor() and alias())
-
-First, we need to know why we get the "1 not defined because of singularities" and "rank-deficient fit" pop ups. This basically shows that two variables are perfectly multicollinear. Since NOT all of our variables are numeric, we cannot run the correlation function as done below since we would also have to do this for the factors.
-
-```{r}
-# Let's first look at the numerics, though...
-cor(tele_train_log[sapply(tele_train_log,is.numeric)])
-# We see quite some high correlations; e.g., emp.var.rate and euribor3m have 0.97, but none of them are perfectly correlated...
-
-
-# See how loanunknown has a 1 for housingunknown? This means that loanunknown = 1 only when housingunknown = 1, and thus we have a perfectly multicollinear variable. We'll make sure to fix this in our revised model.
-
-```
-
-### Fixing Our Prediction Issue
-
-```{r, error = TRUE}
-binarypredictionlog <- ifelse(predict(predictionmodel, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
-## Error: factor default has new levels yes. This issue arises because our train_log default column didn't have the value "yes", but our tele_test_log did...
-# This is, unfortunately, an issue due to the data structure: "yes" just doesn't happen a lot for "default", and to make matters worse it only occurs in our tele_test_log dataset...
-
-# !!!!!!!!!!! Technically, we could just remove the default column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with default = yes in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
-
-predictionmodelnew <- glm(y ~ age + job + marital + education + 
-                            housing + loan + contact + month + 
-                            day_of_week + campaign + previous + 
-                            poutcome + emp.var.rate + cons.price.idx +
-                            cons.conf.idx + euribor3m + nr.employed +
-                            pdaysdummy, data = tele_train_log, family = "binomial")
-summary(predictionmodelnew)
-
-binarypredictionlog <- ifelse(predict(predictionmodelnew, newdata = tele_test_log, type = "response") < 0.5, 0, 1)
-
-# Great! Everything's all good now. Next, let's make a crosstable and confusion matrix.
-CrossTable(tele_test_log_labels, binarypredictionlog, prop.chisq = FALSE)
-
-##!!!!!!!!!!!!!1 Is this really the solution? !!!!!!!!!!!!!!!!!!!!!!
-tele_test_log_labels_y <- ifelse(tele_test_log_labels == "yes", 1, 0)
-
-confusionMatrix(data = as.factor(binarypredictionlog), reference = as.factor(tele_test_log_labels_y), positive = "1")
-```
-
 ## Interpreting our Logistic Regression 
 
 > Text here.
@@ -545,22 +502,41 @@ library(class)
 # We know that for KNN, we have to use a train and test set too, but here we must exclude the response variable.
 # So, all we do is create two label variables instead and drop the response variable from the train and test set.
 
-tele_train_labels <- tele_train$yyes
-tele_test_labels <- tele_test$yyes
+tele_test2knn_labels <- tele_test2$y
+tele_test4knn_labels <- tele_test4$y
+tele_test5knn_labels <- tele_test5$y
 
-tele_train$yyes <- NULL
-tele_test$yyes <- NULL
+tele_train2_labels <- tele_train2$y
+tele_train4_labels <- tele_train4$y
+tele_train5_labels <- tele_train5$y
 
-# Let's now set k
-k <- round(sqrt(nrow(tele_train)), 0)
-# So, k is 91. Thankfully, this is an odd integer so we're all good to continue with this k.
+# Let's now set k2
+k2 <- sqrt(nrow(tele_train2))
+# So let's use k2 = 89
+k2 <- 89
+# Let's now set k4
+k4 <- sqrt(nrow(tele_train4))
+# So let's use k4 = 71
+k4 <- 71
+# Let's  now set k5
+k5 <-sqrt(nrow(tele_train5))
+# So let's use k5 = 87
+k5 <- 87
 
-tele_test_pred_knn <- knn(train = tele_train, test = tele_test, cl = tele_train_labels)
+tele_test2_pred_knn <- knn(train = tele_train2, test = tele_test2, cl = tele_train2_labels, k = k2)
 
-CrossTable(tele_test_labels, tele_test_pred_knn, prop.chisq = F)
+CrossTable(as.factor(tele_test2knn_labels), tele_test2_pred_knn, prop.chisq = F)
+confusionMatrix(data = tele_test2_pred_knn, reference = as.factor(tele_test2knn_labels), positive = "1")
 
-confusionMatrix(data = tele_test_pred_knn, reference = as.factor(tele_test_labels), positive = "1")
+tele_test4_pred_knn <- knn(train = tele_train4, test = tele_test4, cl = tele_train4_labels, k = k4)
 
+CrossTable(as.factor(tele_test4knn_labels), tele_test4_pred_knn, prop.chisq = F)
+confusionMatrix(data = tele_test4_pred_knn, reference = as.factor(tele_test4knn_labels), positive = "1")
+
+tele_test5_pred_knn <- knn(train = tele_train5, test = tele_test5, cl = tele_train5_labels, k = k5)
+
+CrossTable(as.factor(tele_test5knn_labels), tele_test5_pred_knn, prop.chisq = F)
+confusionMatrix(data = tele_test5_pred_knn, reference = as.factor(tele_test5knn_labels), positive = "1")
 ```
 
 ## Interpreting the kNN
