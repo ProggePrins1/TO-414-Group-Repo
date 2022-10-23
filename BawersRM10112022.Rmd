@@ -130,181 +130,6 @@ success_by_segm
 ``` 
 > Through k-means clustering, we identified 5 clusters. The clusters had different call success rates. There were two clusters whose success rates were above the 16.7% threshold determined based on our per-call contribution margin. The other three clusters had significantly lower success rates. Therefore, we are going to apply our machine learning models to these clusters in order to optimize our targeting and, hopefully, achieve a higher success rate.
 
-# ANN
-## Preparing datasets for modeling
-```{r}
-# Create dataframes with the three clusters using conditional filtering
-normcluster2 <- tele_norm_cluster[tele_norm_cluster$cluster == 2,] %>% select(-cluster)
-normcluster4 <- tele_norm_cluster[tele_norm_cluster$cluster == 4,] %>% select(-cluster)
-normcluster5 <- tele_norm_cluster[tele_norm_cluster$cluster == 5,] %>% select(-cluster)
-```
-
-## Let's create train and test datasets for each cluster
-```{r}
-# Do an approximate 80-20 train-test split. We prevented hard-coding this by using the floor() function.
-
-tele_train2 <- normcluster2[1:floor(0.8*nrow(normcluster2)),]
-tele_test2 <- normcluster2[(floor(0.8*nrow(normcluster2)+1)):nrow(normcluster2),]
-
-tele_train4 <- normcluster4[1:floor(0.8*nrow(normcluster4)),]
-tele_test4 <- normcluster4[(floor(0.8*nrow(normcluster4)+1)):nrow(normcluster4),]
-
-tele_train5 <- normcluster5[1:floor(0.8*nrow(normcluster5)),]
-tele_test5 <- normcluster5[(floor(0.8*nrow(normcluster5)+1)):nrow(normcluster5),]
-```
-
-## Building our initial model
-
-```{r, cache = TRUE}
-library(neuralnet)
-tele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 1)
-plot(tele_model2)
-
-tele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 1, stepmax = 1e+08)
-plot(tele_model4)
-
-tele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 1, stepmax = 1e+08)
-plot(tele_model5)
-
-# What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won't be able to see this for some reason... - just take our word for it!)
-```
-
-## Initial Results from our ANN Model
-```{r}
-# First, we must load the neuralnet package.
-
-library(neuralnet)
-
-# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
-modelresults2 <- compute(tele_model2, tele_test2[1:53])
-modelresults4 <- compute(tele_model4, tele_test4[1:53])
-modelresults5 <- compute(tele_model5, tele_test5[1:53])
-
-predictedtele2 <- modelresults2$net.result
-summary(predictedtele2)
-# We already see that the values are incredibly low. This is because the success rates of this cluster are incredibly low.
-# Note that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
-predictedtele4 <- modelresults4$net.result
-summary(predictedtele4)
-# See interpretation for predictedtele2 - the same applies here.
-predictedtele5 <- modelresults5$net.result
-summary(predictedtele5)
-# This seems to be all correct thus far... now, let's actually create a binary value.
-
-annprediction2 <- ifelse(predictedtele2 < 0.5, 0, 1)
-annprediction4 <- ifelse(predictedtele4 < 0.5, 0, 1)
-annprediction5 <- ifelse(predictedtele5 < 0.5, 0, 1)
-
-# Now, we must make a Cross Table and Confusion Matrix.
-
-library(gmodels)
-library(caret)
-
-# For cluster = 2
-CrossTable(tele_test2$y, annprediction2, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(annprediction2), reference = as.factor(tele_test2$y), positive = "1")
-
-# For cluster = 4
-CrossTable(tele_test4$y, annprediction4, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(annprediction4), reference = as.factor(tele_test4$y), positive = "1")
-
-# For cluster = 5
-CrossTable(tele_test5$y, annprediction5, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(annprediction5), reference = as.factor(tele_test5$y), positive = "1")
-```
-
-## Interpreting Our Initial ANN
-
-This interpretation section - and any following interpretation sections - have been separated **per cluster**. As a disclaimer, *we did try to tinker with the cut-off value of 0.5, but this either (1) only made the model less accurate because the trained model is mainly based on unsuccessful calls, or (2) increased the accuracy only marginally. In the latter case, we carried this forward but since this already counts towards "improving the model", we'll only incorporate this later on*. Instead, we'll try to improve the model by adding hidden layers later on. 
-
-### Cluster 2
-
-With a cut-off point at 0.5, our ANN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that *all 1953 people would say no*, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our ANN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person.
-
-### Cluster 4
-
-With a cut-off point at 0.5, our ANN model predicts that someone will say no 1234 times, whilst only being correct 1180 times (95.6%), whereas it predicts a yes 8 times, whilst only being correct 3 times (37.5%). This shows clear room of improvement as we now have 54 false negatives, leading to lost sales, whilst also incurring some costs by calling people who wouldn't want our offering. Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.08].
-
-### Cluster 5
-
-With a cut-off point at 0.5, our ANN model predicts that someone will say no 1854 times, whilst only being correct 1773 times (95.6%), whereas it predicts a yes 1 time, which is a correct prediction. Still, the 81 false negatives are worrying as this shows significant lost revenues. Thankfully, we wouldn't incur unnecessary costs by calling someone who wouldn't say yes anyways! Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.02].
-
-## Improving Our ANN Model
-
-```{r}
-# Let's do everything again, but now adding some additional layers to the ANN cluster models.
-
-# Choosing the hidden levels is somewhat arbitrary. To not overload our computers, we went for hidden = 2.
-
-improvedtele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 2)
-plot(tele_model2)
-
-improvedtele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 2, stepmax = 1e+08)
-plot(tele_model4)
-
-improvedtele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 2, stepmax = 1e+08)
-plot(tele_model5)
-
-```
-
-## Results from our Improved ANN Model
-
-```{r}
-# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
-improvedmodelresults2 <- compute(improvedtele_model2, tele_test2[1:53])
-improvedmodelresults4 <- compute(improvedtele_model4, tele_test4[1:53])
-improvedmodelresults5 <- compute(improvedtele_model5, tele_test5[1:53])
-
-improvedpredictedtele2 <- improvedmodelresults2$net.result
-summary(improvedpredictedtele2)
-# We already see that the values stay incredibly low. Again, this is because the success rates of this cluster are incredibly low.
-# Note, again, that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
-improvedpredictedtele4 <- improvedmodelresults4$net.result
-summary(improvedpredictedtele4)
-# See interpretation for predictedtele2 - the same applies here.
-improvedpredictedtele5 <- improvedmodelresults5$net.result
-summary(improvedpredictedtele5)
-# This seems to be all correct thus far... now, let's actually create a binary value.
-
-improvedannprediction2 <- ifelse(improvedpredictedtele2 < 0.5, 0, 1)
-improvedannprediction4 <- ifelse(improvedpredictedtele4 < 0.22, 0, 1)
-improvedannprediction5 <- ifelse(improvedpredictedtele5 < 0.18, 0, 1)
-
-# Now, let's create a Cross Table and Confusion Matrix.
-
-# For cluster = 2
-CrossTable(tele_test2$y, improvedannprediction2, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(improvedannprediction2), reference = as.factor(tele_test2$y), positive = "1")
-
-# For cluster = 4
-CrossTable(tele_test4$y, improvedannprediction4, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(improvedannprediction4), reference = as.factor(tele_test4$y), positive = "1")
-
-# For cluster = 5
-CrossTable(tele_test5$y, improvedannprediction5, prop.chisq = FALSE)
-confusionMatrix(data = as.factor(improvedannprediction5), reference = as.factor(tele_test5$y), positive = "1")
-
-```
-
-## Interpreting our Improved ANN Model
-
-> For this section, we *DID* adjust the cut-off points using a trial-and-error method to ensure that the accuracy estimates are as high as possible. As a rule of thumb, we tried to prevent as many false negatives as possible whilst preventing that false positives would grow significantly (line of thought: $6 in lost sales > $1 in costs, but not worth it if one decrease in FN comes paired with 6 or more increases in FP).
-
-### Cluster 2
-
-For cluster 2, it's still best to have a cut-off point of 0.5, purely because it's simply not worth it to call anyone in this segment given the ANN model. Lowering the cut-off point would result in a lot of costs from calling people who wouldn't say yes to our offering. As such, we'd incur losses of 108 * - 6 = -€648. That said, if we were to call everyone, we'd have profits of  108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657 (although we'd still make losses). 
-
-### Cluster 4
-
-For cluster 4, it's best to have a cut-off point of 0.22, again because our ANN has a very low prediction value given the low success rate of the fourth cluster AND because reducing false negatives (-6) is more important than lowering false positives (-1). The profits in this case would be 3 * 6 - 54 * 6 - 3 * 1 = -€309, so unfortunately still negative. Incremental profits, however, would be positive. If we were to call everyone, we'd have profits of 57 * 6 - 1242 * 1 = -€900, making incremental profits of 900 - 309 = €591 by implementing an ANN model.
-
-### Cluster 5
-
-For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very low prediction value of 0.03 for even observations that actually said "yes" in real life to our call. The total costs in this case would be 81 * 6 = 486 in lost sales and 8 * 1 = 8 in costs, resulting in a total of €494. Profits would be €6 * 1 - €494 = -€488  Still not incredible, but the main finding is that cluster 5 might not be worth it to call (oh, and don't forget to compare this to calling all people in the test set of cluster 5, with 1855 * 1 = €1855, and revenue of 82 * €6 = €492. Profits = €492 - €1855 = -€1363). So, based on the status quo, we'd still gain 1363 - 488 = €875.
-
-### Final Conclusion
-
-> Simply put, ANN works. We cannot make these low-success clusters into money machines, and the model is not perfect in preventing us from calling anyone who will say no, but we have saved costs tremendously by using ANN. Savings are 657 + 591 + 875 = €2123.
 
 
 
@@ -492,6 +317,190 @@ confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.
 
 ## Interpreting our Logistic Regression 
 
+
+
+# ANN
+## Preparing datasets for modeling
+```{r}
+# Create dataframes with the three clusters using conditional filtering
+library(tidyverse)
+normcluster2 <- tele_norm_cluster[tele_norm_cluster$cluster == 2,] %>% select(-cluster)
+normcluster4 <- tele_norm_cluster[tele_norm_cluster$cluster == 4,] %>% select(-cluster)
+normcluster5 <- tele_norm_cluster[tele_norm_cluster$cluster == 5,] %>% select(-cluster)
+```
+
+## Let's create train and test datasets for each cluster
+```{r}
+# Do an approximate 80-20 train-test split. We prevented hard-coding this by using the floor() function.
+
+tele_train2 <- normcluster2[1:floor(0.8*nrow(normcluster2)),]
+tele_test2 <- normcluster2[(floor(0.8*nrow(normcluster2)+1)):nrow(normcluster2),]
+
+tele_train4 <- normcluster4[1:floor(0.8*nrow(normcluster4)),]
+tele_test4 <- normcluster4[(floor(0.8*nrow(normcluster4)+1)):nrow(normcluster4),]
+
+tele_train5 <- normcluster5[1:floor(0.8*nrow(normcluster5)),]
+tele_test5 <- normcluster5[(floor(0.8*nrow(normcluster5)+1)):nrow(normcluster5),]
+```
+
+## Building our initial model
+
+```{r, cache = TRUE}
+library(neuralnet)
+tele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 1)
+plot(tele_model2)
+
+tele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 1, stepmax = 1e+08)
+plot(tele_model4)
+
+tele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 1, stepmax = 1e+08)
+plot(tele_model5)
+
+# What we see already from the plot is that every feature has one input node, that there is one hidden layer with a bias term and one output node with a bias term (you won't be able to see this for some reason... - just take our word for it!)
+```
+
+## Initial Results from our ANN Model
+```{r}
+# First, we must load the neuralnet package.
+
+library(neuralnet)
+
+# Before we do anything, we have to remove the row with october as month in our ANN model, too, to allow for fair comparisons. This is done by using conditional filtering.
+
+tele_test2 <- tele_test2[-which(tele_test2$monthoct == 1, arr.ind = T),]
+
+# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
+modelresults2 <- compute(tele_model2, tele_test2[1:53])
+modelresults4 <- compute(tele_model4, tele_test4[1:53])
+modelresults5 <- compute(tele_model5, tele_test5[1:53])
+
+predictedtele2 <- modelresults2$net.result
+summary(predictedtele2)
+# We already see that the values are incredibly low. This is because the success rates of this cluster are incredibly low.
+# Note that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
+predictedtele4 <- modelresults4$net.result
+summary(predictedtele4)
+# See interpretation for predictedtele2 - the same applies here.
+predictedtele5 <- modelresults5$net.result
+summary(predictedtele5)
+# This seems to be all correct thus far... now, let's actually create a binary value.
+
+annprediction2 <- ifelse(predictedtele2 < 0.5, 0, 1)
+annprediction4 <- ifelse(predictedtele4 < 0.5, 0, 1)
+annprediction5 <- ifelse(predictedtele5 < 0.5, 0, 1)
+
+# Now, we must make a Cross Table and Confusion Matrix.
+
+library(gmodels)
+library(caret)
+
+# For cluster = 2
+CrossTable(tele_test2$y, annprediction2, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction2), reference = as.factor(tele_test2$y), positive = "1")
+
+# For cluster = 4
+CrossTable(tele_test4$y, annprediction4, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction4), reference = as.factor(tele_test4$y), positive = "1")
+
+# For cluster = 5
+CrossTable(tele_test5$y, annprediction5, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(annprediction5), reference = as.factor(tele_test5$y), positive = "1")
+```
+
+## Interpreting Our Initial ANN
+
+This interpretation section - and any following interpretation sections - have been separated **per cluster**. As a disclaimer, *we did try to tinker with the cut-off value of 0.5, but this either (1) only made the model less accurate because the trained model is mainly based on unsuccessful calls, or (2) increased the accuracy only marginally. In the latter case, we carried this forward but since this already counts towards "improving the model", we'll only incorporate this later on*. Instead, we'll try to improve the model by adding hidden layers later on. 
+
+### Cluster 2
+
+With a cut-off point at 0.5, our ANN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that *all 1953 people would say no*, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our ANN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person.
+
+### Cluster 4
+
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1234 times, whilst only being correct 1180 times (95.6%), whereas it predicts a yes 8 times, whilst only being correct 3 times (37.5%). This shows clear room of improvement as we now have 54 false negatives, leading to lost sales, whilst also incurring some costs by calling people who wouldn't want our offering. Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.08].
+
+### Cluster 5
+
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1854 times, whilst only being correct 1773 times (95.6%), whereas it predicts a yes 1 time, which is a correct prediction. Still, the 81 false negatives are worrying as this shows significant lost revenues. Thankfully, we wouldn't incur unnecessary costs by calling someone who wouldn't say yes anyways! Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.02].
+
+## Improving Our ANN Model
+
+```{r}
+# Let's do everything again, but now adding some additional layers to the ANN cluster models.
+
+# Choosing the hidden levels is somewhat arbitrary. To not overload our computers, we went for hidden = 2.
+
+improvedtele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 2)
+plot(tele_model2)
+
+improvedtele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 2, stepmax = 1e+08)
+plot(tele_model4)
+
+improvedtele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 2, stepmax = 1e+08)
+plot(tele_model5)
+
+```
+
+## Results from our Improved ANN Model
+
+```{r}
+# Let's exclude the y column in our tele_test. We don't want to run ANN with that included.
+improvedmodelresults2 <- compute(improvedtele_model2, tele_test2[1:53])
+improvedmodelresults4 <- compute(improvedtele_model4, tele_test4[1:53])
+improvedmodelresults5 <- compute(improvedtele_model5, tele_test5[1:53])
+
+improvedpredictedtele2 <- improvedmodelresults2$net.result
+summary(improvedpredictedtele2)
+# We already see that the values stay incredibly low. Again, this is because the success rates of this cluster are incredibly low.
+# Note, again, that this isn't bad, per se - it just tells us that we shouldn't call this cluster.
+improvedpredictedtele4 <- improvedmodelresults4$net.result
+summary(improvedpredictedtele4)
+# See interpretation for predictedtele2 - the same applies here.
+improvedpredictedtele5 <- improvedmodelresults5$net.result
+summary(improvedpredictedtele5)
+# This seems to be all correct thus far... now, let's actually create a binary value.
+
+improvedannprediction2 <- ifelse(improvedpredictedtele2 < 0.5, 0, 1)
+improvedannprediction4 <- ifelse(improvedpredictedtele4 < 0.22, 0, 1)
+improvedannprediction5 <- ifelse(improvedpredictedtele5 < 0.18, 0, 1)
+
+# Now, let's create a Cross Table and Confusion Matrix.
+
+# For cluster = 2
+CrossTable(tele_test2$y, improvedannprediction2, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction2), reference = as.factor(tele_test2$y), positive = "1")
+
+# For cluster = 4
+CrossTable(tele_test4$y, improvedannprediction4, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction4), reference = as.factor(tele_test4$y), positive = "1")
+
+# For cluster = 5
+CrossTable(tele_test5$y, improvedannprediction5, prop.chisq = FALSE)
+confusionMatrix(data = as.factor(improvedannprediction5), reference = as.factor(tele_test5$y), positive = "1")
+
+```
+
+## Interpreting our Improved ANN Model
+
+> For this section, we *DID* adjust the cut-off points using a trial-and-error method to ensure that the accuracy estimates are as high as possible. As a rule of thumb, we tried to prevent as many false negatives as possible whilst preventing that false positives would grow significantly (line of thought: $6 in lost sales > $1 in costs, but not worth it if one decrease in FN comes paired with 6 or more increases in FP).
+
+### Cluster 2
+
+For cluster 2, it's still best to have a cut-off point of 0.5, purely because it's simply not worth it to call anyone in this segment given the ANN model. Lowering the cut-off point would result in a lot of costs from calling people who wouldn't say yes to our offering. As such, we'd incur losses of 108 * - 6 = -€648. That said, if we were to call everyone, we'd have profits of  108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657 (although we'd still make losses). 
+
+### Cluster 4
+
+For cluster 4, it's best to have a cut-off point of 0.22, again because our ANN has a very low prediction value given the low success rate of the fourth cluster AND because reducing false negatives (-6) is more important than lowering false positives (-1). The profits in this case would be 3 * 6 - 54 * 6 - 3 * 1 = -€309, so unfortunately still negative. Incremental profits, however, would be positive. If we were to call everyone, we'd have profits of 57 * 6 - 1242 * 1 = -€900, making incremental profits of 900 - 309 = €591 by implementing an ANN model.
+
+### Cluster 5
+
+For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very low prediction value of 0.03 for even observations that actually said "yes" in real life to our call. The total costs in this case would be 81 * 6 = 486 in lost sales and 8 * 1 = 8 in costs, resulting in a total of €494. Profits would be €6 * 1 - €494 = -€488  Still not incredible, but the main finding is that cluster 5 might not be worth it to call (oh, and don't forget to compare this to calling all people in the test set of cluster 5, with 1855 * 1 = €1855, and revenue of 82 * €6 = €492. Profits = €492 - €1855 = -€1363). So, based on the status quo, we'd still gain 1363 - 488 = €875.
+
+### Final Conclusion
+
+> Simply put, ANN works. We cannot make these low-success clusters into money machines, and the model is not perfect in preventing us from calling anyone who will say no, but we have saved costs tremendously by using ANN. Savings are 657 + 591 + 875 = €2123.
+
+
 ### Cluster 2
 
 ### Cluster 4
@@ -505,6 +514,9 @@ confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.
 ```{r}
 library(class)
 # We know that for KNN, we have to use a train and test set too, but here we must exclude the response variable.
+
+# Before we do anything, let's remove the october record in our test set; this is already done since we removed it from the tele_test2$y column to begin with,
+
 # So, all we do is create two label variables instead and drop the response variable from the train and test set.
 
 tele_test2knn_labels <- tele_test2$y
@@ -572,8 +584,6 @@ To start building a combined prediction model, we need a new dataframe with all 
 combinedoutputs2 <- data.frame(improvedannprediction2, improvedbinarypredictionlogt2, tele_test2_pred_knn)
 colnames(combinedoutputs2) <- c("ANN", "LogReg", "kNN")
 
-tele_test2[which(tele_test2$monthoct == 1),]
-
 combinedoutputs4 <- data.frame(improvedannprediction4, improvedbinarypredictionlogt4, tele_test4_pred_knn)
 colnames(combinedoutputs4) <- c("ANN", "LogReg", "kNN")
 
@@ -605,14 +615,18 @@ combinedoutputs5$mix <- ifelse(combinedoutputs5$ANN +
 # Great! Now let's make a Cross Table and Confusion matrix again.
 
 # Store mix results into a numeric.
+combinedresults2 <- as.numeric(combinedoutputs2$mix)
 combinedresults4 <- as.numeric(combinedoutputs4$mix)
 combinedresults5 <- as.numeric(combinedoutputs5$mix)
 
 # Create a cross table
+CrossTable(tele_test2knn_labels, combinedresults2, prop.chisq = F)
 CrossTable(tele_test4knn_labels, combinedresults4, prop.chisq = F)
 CrossTable(tele_test5knn_labels, combinedresults5, prop.chisq = F)
 
 # Create a confusion matrix
+confusionMatrix(data = as.factor(combinedresults2), reference = as.factor(tele_test2knn_labels), positive = "1")
+
 confusionMatrix(data = as.factor(combinedresults4), reference = as.factor(tele_test4knn_labels), positive = "1")
 
 confusionMatrix(data = as.factor(combinedresults5), reference = as.factor(tele_test5knn_labels), positive = "1")
@@ -620,17 +634,23 @@ confusionMatrix(data = as.factor(combinedresults5), reference = as.factor(tele_t
 
 ## Improving our Combined Prediction Model - An Interesting Task
 
-> NOTE TO US: Let's just explain here that the way to improve a combined model is by improving its roots (being the ANN, LR, and kNN). That said, if we were allowed to add weights to the sum, things would be interesting. We'd add a higher weight to the most accurate model and similarly penalize less accurate models. 
+The way to improve a combined model is by improving its roots (being the ANN, LR, and kNN). That said, if we were allowed to add weights to the sum, things would be interesting. We'd add a higher weight to the most accurate model and similarly penalize less accurate models. However, as the model was described in class as the sum of the LR, KNN, and ANN output, we decided *not to tinker with weights.*
 
 ## Interpreting our Combined Prediction Model
 
 > Text here. 
 
-
-## Interpreting our K-means Clustering Model
-
-> Text here. 
-
 # Conclusion and Recommendations
 
-> Text here....
+## Profits without any model
+
+## Profits with LR
+
+## Profits with ANN
+
+## Profits with kNN
+
+## Profits with Combined Model
+
+# FINAL CONCLUSION - BEST MODEL
+
