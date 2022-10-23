@@ -457,23 +457,23 @@ tele_test2_log[which(tele_test2_log$month == "oct"),]
 # We have to remove this row from our test set and our labels set. Unfortunately, there is no other option.
 # We did not have to do this for the other regression models because the months were not significant to start with.
 # Yet, in cluster 2, the monthjul is a significant variable.
+# That said, we would also have to remove that row from the labels. This requires a small extra step.
 
+tele_test2_log$y <- tele_test2_log_labels
+# now we check for the october row...
 which(tele_test2_log$month == "oct", arr.ind = T)
 # we now know it's row 1723. So, let's remove that row.
-tele_test2_log <- tele_test2_log[-1723,]
+tele_test2_log <- tele_test2_log[-which(tele_test2_log$month == "oct", arr.ind = T),]
+# and now we "recreate" the labels.
+tele_test2_log_labels <- tele_test2_log$y
 
-# To remove a row, change labels into a df.
-tele_test2_log_labels <- as.data.frame(tele_test2_log_labels)
-
-# Let's remove the 1723rd row in our df.
-tele_test2_log_labels <- tele_test2_log_labels[-1723,]
-
-CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
+# and all good! Let's create a crosstable now.
 
 improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
 CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
 
 # Cluster 4
+# This cluster is somewhat straightforward; let's simply run the crosstable.
 
 improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.4, 0, 1)
 CrossTable(tele_test4_log_labels, improvedbinarypredictionlogt4, prop.chisq = FALSE)
