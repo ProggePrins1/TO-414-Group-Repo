@@ -393,7 +393,7 @@ summary(predictionmodelt5)
 
 > The thing is that our models are nowhere near strong. We still have tons of variables that will likely be highly multicollinear, and we actually must remove variables before we can run predictions. Below is explained why.
 
-## Using Linear Regression on the Test Data - why it doesn't "just" work.
+## Using Logistic Regression on the Test Data - why it doesn't "just" work.
 
 ```{r}
 binarypredictionlogt2 <- ifelse(predict(predictionmodelt2, newdata = tele_test2_log, type = "response") < 0.5, 0, 1)
@@ -407,7 +407,7 @@ binarypredictionlogt5 <- ifelse(predict(predictionmodelt5, newdata = tele_test5_
 
 Technically, we could just remove the month column in both our regression and thus our predict, since we can already see that it's not significant. Let's do that! Alternatively, we could deliberately include an observation with month = the month needed in our train set, but that would skew our comparison relative to ANN and KNN. Thus, doing this is ill-advised.
 
-## Removing Columns in Linear Regression
+## Removing Columns in Logistic Regression
 
 ```{r}
 
@@ -433,15 +433,14 @@ summary(improvedpredictionmodelt4)
 # Let's remove nr.employed first because it contains NA's.
 improvedpredictionmodelt5 <- glm(y ~. - nr.employed, data = tele_train5_log, family = "binomial")
 summary(improvedpredictionmodelt5)
-# We see that, thankfully, now we have more realistic p-values! We can now use our normal
-# procedure to refine the regression.
+# We see that, thankfully, now we have more realistic p-values! We can now use our normal procedure to refine the regression.
 
 improvedpredictionmodelt5 <- glm(y ~ job + marital + housing + euribor3m, data = tele_train5_log, family = "binomial")
 summary(improvedpredictionmodelt5)
 
 ```
 
-## Rerun Prediction Models
+## Rerun Improved Prediction Models
 
 ```{r}
 
@@ -470,7 +469,7 @@ tele_test2_log$y <- NULL
 
 # and all good! Let's create a crosstable now.
 
-improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
+improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.1, 0, 1)
 CrossTable(tele_test2_log_labels, improvedbinarypredictionlogt2, prop.chisq = FALSE)
 tele_test2_log_labels <- ifelse(tele_test2_log_labels == "yes", 1, 0)
 confusionMatrix(data = as.factor(improvedbinarypredictionlogt2), reference = as.factor(tele_test2_log_labels), positive = "1")
@@ -478,20 +477,26 @@ confusionMatrix(data = as.factor(improvedbinarypredictionlogt2), reference = as.
 # Cluster 4
 # This cluster is somewhat straightforward; let's simply run the Crosstable.
 
-improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.05, 0, 1)
+improvedbinarypredictionlogt4 <- ifelse(predict(improvedpredictionmodelt4, newdata = tele_test4_log, type = "response") < 0.12, 0, 1)
 CrossTable(tele_test4_log_labels, improvedbinarypredictionlogt4, prop.chisq = FALSE)
 tele_test4_log_labels <- ifelse(tele_test4_log_labels == "yes", 1, 0)
 confusionMatrix(data = as.factor(improvedbinarypredictionlogt4), reference = as.factor(tele_test4_log_labels), positive = "1")
 
 # Cluster 5
 # Similarly, we can simply run the Crosstable here.
-improvedbinarypredictionlogt5 <- ifelse(predict(improvedpredictionmodelt5, newdata = tele_test5_log, type = "response") < 0.05, 0, 1)
+improvedbinarypredictionlogt5 <- ifelse(predict(improvedpredictionmodelt5, newdata = tele_test5_log, type = "response") < 0.5, 0, 1)
 CrossTable(tele_test5_log_labels, improvedbinarypredictionlogt5, prop.chisq = FALSE)
 tele_test5_log_labels <- ifelse(tele_test5_log_labels == "yes", 1, 0)
 confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.factor(tele_test5_log_labels), positive = "1")
 ```
 
 ## Interpreting our Logistic Regression 
+
+### Cluster 2
+
+### Cluster 4
+
+### Cluster 5
 
 > Text here.
 
@@ -541,42 +546,76 @@ confusionMatrix(data = tele_test5_pred_knn, reference = as.factor(tele_test5knn_
 
 ## Interpreting the kNN
 
-> Text here... 
+### Cluster 2
+
+Our kNN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that all 1953 people would say no, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our kNN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person. Using the kNN model on this cluster would result in us not calling 108 "yes" customers which would result in a loss of a potential €648 , however our overall costs would be less than if we were to call everyone 108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657.
+
+### Cluster 4
+
+As with the previous cluster, our kNN model never predicts that someone will say yes for the same reasons stated previously. The model predicts that every single customer in the cluster would say no, doing it with a 95.41% accuracy. This cluster has the same issue with false negatives as cluster 2 and we therefore lose out on 57 * 6 = €342 in earnings. Using the kNN model instead of calling everyone we save out on spending 57*6 - 1242 = €900 on calls that would never return a profit. Thus, using the kNN model saves the company 900 - 342 = €558.
+
+### Cluster 5
+
+Using the kNN model on cluster 5 leaves us again with no one saying yes. The model once again predicts that everyone will say no. With an accuracy of 95.58% the model once again leaves us with a set of false negatives, this time 82, meaning that the company will lose out on 82 * 6 = €492 in earnings. Using the kNN model instead of calling everyone we save out on spending 82*6 - 1242 = €1363 on calls that would never return a profit. Thus, using the kNN model saves the company 1363 - 492 = €871.
+
+### Final Conclusion on kNN
+kNN works to some extent. Using the model we did save the company thousands in reduced costs, because we would never have called a single customer in the respective clusters. For another project there could be value in searching through different k-values to be used for the different clusters.
+
+> TOTAL SAVINGS FOR KNN: 
+
 
 # A Combined Prediction Model
 
 To start building a combined prediction model, we need a new dataframe with all output values (0,1). 
 ```{r}
 
-combinedoutputs <- data.frame(yyes_prediction, binarypredictionlog, tele_test_pred_knn)
-colnames(combinedoutputs) <- c("ANN", "LogReg", "kNN")
+combinedoutputs2 <- data.frame(improvedannprediction2, improvedbinarypredictionlogt2, tele_test2_pred_knn)
+colnames(combinedoutputs2) <- c("ANN", "LogReg", "kNN")
 
-str(combinedoutputs)
+tele_test2[which(tele_test2$monthoct == 1),]
+
+combinedoutputs4 <- data.frame(improvedannprediction4, improvedbinarypredictionlogt4, tele_test4_pred_knn)
+colnames(combinedoutputs4) <- c("ANN", "LogReg", "kNN")
+
+combinedoutputs5 <- data.frame(improvedannprediction5, improvedbinarypredictionlogt5, tele_test5_pred_knn)
+colnames(combinedoutputs5) <- c("ANN", "LogReg", "kNN")
+str(combinedoutputs5)
 # We see that our kNN column is a factor. Let's change that into a numeric for our ifelse later on.
 
-combinedoutputs$kNN <- ifelse(combinedoutputs$kNN == "0", 0, 1)
+combinedoutputs2$kNN <- ifelse(combinedoutputs2$kNN == "0", 0, 1)
+combinedoutputs4$kNN <- ifelse(combinedoutputs4$kNN == "0", 0, 1)
+combinedoutputs5$kNN <- ifelse(combinedoutputs5$kNN == "0", 0, 1)
 
 # Let's have a look again...
-str(combinedoutputs)
-head(combinedoutputs)
+str(combinedoutputs5)
 
 # Everything's all good! Let's now have a real combined output.
+combinedoutputs2$mix <- ifelse(combinedoutputs2$ANN + 
+                                combinedoutputs2$LogReg + 
+                                combinedoutputs2$kNN > 1, 1, 0)
 
-combinedoutputs$mix <- ifelse(combinedoutputs$ANN + 
-                                combinedoutputs$LogReg + 
-                                combinedoutputs$kNN > 1, 1, 0)
+combinedoutputs4$mix <- ifelse(combinedoutputs4$ANN + 
+                                combinedoutputs4$LogReg + 
+                                combinedoutputs4$kNN > 1, 1, 0)
+
+combinedoutputs5$mix <- ifelse(combinedoutputs5$ANN + 
+                                combinedoutputs5$LogReg + 
+                                combinedoutputs5$kNN > 1, 1, 0)
 
 # Great! Now let's make a Cross Table and Confusion matrix again.
 
 # Store mix results into a numeric.
-combinedresults <- as.numeric(combinedoutputs$mix)
+combinedresults4 <- as.numeric(combinedoutputs4$mix)
+combinedresults5 <- as.numeric(combinedoutputs5$mix)
 
 # Create a cross table
-CrossTable(tele_test_labels, combinedresults, prop.chisq = F)
+CrossTable(tele_test4knn_labels, combinedresults4, prop.chisq = F)
+CrossTable(tele_test5knn_labels, combinedresults5, prop.chisq = F)
 
 # Create a confusion matrix
+confusionMatrix(data = as.factor(combinedresults4), reference = as.factor(tele_test4knn_labels), positive = "1")
 
-confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_test_labels), positive = "1")
+confusionMatrix(data = as.factor(combinedresults5), reference = as.factor(tele_test5knn_labels), positive = "1")
 ```
 
 ## Improving our Combined Prediction Model - An Interesting Task
@@ -587,20 +626,6 @@ confusionMatrix(data = as.factor(combinedresults), reference = as.factor(tele_te
 
 > Text here. 
 
-
-
-## Applying K-means Clustering to the Test Set
-
-```{r}
-
-```
-
-
-## Improving our K-means Clustering Model 
-
-```{r}
-
-```
 
 ## Interpreting our K-means Clustering Model
 
