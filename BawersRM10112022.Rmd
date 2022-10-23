@@ -543,13 +543,6 @@ confusionMatrix(data = tele_test5_pred_knn, reference = as.factor(tele_test5knn_
 
 > Text here... 
 
-
-## Improving Our kNN Model
-
-```{r}
-
-```
-
 # A Combined Prediction Model
 
 To start building a combined prediction model, we need a new dataframe with all output values (0,1). 
