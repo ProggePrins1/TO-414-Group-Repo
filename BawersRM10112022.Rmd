@@ -317,7 +317,22 @@ confusionMatrix(data = as.factor(improvedbinarypredictionlogt5), reference = as.
 
 ## Interpreting our Logistic Regression 
 
+### Cluster 2
 
+Based on our model, we would end up calling 4 people in total, which gives total costs of €4. However, revenue is €6 with one call being successful. In this way, one would end up with a profit of **€2**, which means it would make sense to call these people. Compared to calling all, savings would then tally €1948 + €2 = **€1950**. However, one should still note that 107 ended up saying yes, but our model predicted them to say no. In other words, there is a lost revenue of **€642**. However, to get this number down, one would also have to call more people saying no, bringing up the costs.
+
+### Cluster 4
+
+Cluster 4 yields the same profit as cluster 2. Based on the model, 4 people should be called, essentially meaning costs of **€4**. Yet, with one call being successful, total profit is 1 * €6 - €4 = **€2**. Including the incremental savings from not calling anyone, this would result in incremental profits of €1238 + €2 = **€1240**.
+In this way, the logistic regression model for cluster 4 is also profitable. Yet, one should still notice the missing revenue from people that would not be called (based on the model) - this number is equal to €56 * €6 = **€336**.
+
+### Cluster 5
+
+The logistic regression model for cluster 5 essentially tells us that no one should be called -- it only predicts “0”. Thus, the incremental profits relative to calling everyone is simply equal to the number of people not called - **€1855.** In this way, there will be no costs and no revenue. 82 people in this cluster turned out to be buyers, so there will be a lost revenue of €82 * €6 = **€492**.
+
+### Final Conclusion on LR
+
+LR results in total incremental profits, excluding lost sales, of 1950 + 1240 + 1855 = **€5045**.
 
 # ANN
 ## Preparing datasets for modeling
@@ -413,15 +428,23 @@ This interpretation section - and any following interpretation sections - have b
 
 ### Cluster 2
 
-With a cut-off point at 0.5, our ANN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that *all 1953 people would say no*, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our ANN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person.
+With a cut-off point at 0.5, our ANN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that *all 1952 people would say no*, being correct 94.47% of the time. 
+Excluding lost sales, this infers that we wouldn't call anyone and thus break-even at *€0*.
+
+Including lost sales infers that we have to include the false negatives, which are worrying. We could have gotten 108 "yes'" if our ANN model were a bit stronger, resulting in lost sales of 108 * 6 = *€648*. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person, despite the lost sales.
 
 ### Cluster 4
 
-With a cut-off point at 0.5, our ANN model predicts that someone will say no 1234 times, whilst only being correct 1180 times (95.6%), whereas it predicts a yes 8 times, whilst only being correct 3 times (37.5%). This shows clear room of improvement as we now have 54 false negatives, leading to lost sales, whilst also incurring some costs by calling people who wouldn't want our offering. Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.08].
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1234 times, whilst only being correct 1180 times (95.6%), whereas it predicts a yes 8 times, whilst only being correct 3 times (37.5%).
+Excluding lost sales, this infers that we would make profits of (6-1) * 3 - 5 * 1 = **€10**.
+
+Including lost sales, however, infers that we must also include the 54 false negatives, resulting in net of €10 - 54 * 6 = - €314, so a net negative of **€314**. Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.08].
 
 ### Cluster 5
 
-With a cut-off point at 0.5, our ANN model predicts that someone will say no 1854 times, whilst only being correct 1773 times (95.6%), whereas it predicts a yes 1 time, which is a correct prediction. Still, the 81 false negatives are worrying as this shows significant lost revenues. Thankfully, we wouldn't incur unnecessary costs by calling someone who wouldn't say yes anyways! Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.02].
+With a cut-off point at 0.5, our ANN model predicts that someone will say no 1854 times, whilst only being correct 1773 times (95.6%), whereas it predicts a yes 1 time, which is a correct prediction. Excluding lost sales, that means that we'd make profits of 1 * (6-1) = **€5.**. Including the savings from NOT calling the people we previously would, our incremental profits are €5 + €1854 = **€1859**.
+
+That said, when we include lost sales, we better understand the impact of 81 false negatives, resulting in a net of 5 - 6 * 81 = -€481, so a net negative of **€481**. Thankfully, we wouldn't incur unnecessary costs by calling someone who wouldn't say yes anyways! In other words, all our calls are worth it! Again, however, such a model again shows that we shouldn't call everyone [kappa = 0.02].
 
 ## Improving Our ANN Model
 
@@ -462,7 +485,7 @@ summary(improvedpredictedtele5)
 
 improvedannprediction2 <- ifelse(improvedpredictedtele2 < 0.5, 0, 1)
 improvedannprediction4 <- ifelse(improvedpredictedtele4 < 0.22, 0, 1)
-improvedannprediction5 <- ifelse(improvedpredictedtele5 < 0.18, 0, 1)
+improvedannprediction5 <- ifelse(improvedpredictedtele5 < 0.5, 0, 1)
 
 # Now, let's create a Cross Table and Confusion Matrix.
 
@@ -486,28 +509,28 @@ confusionMatrix(data = as.factor(improvedannprediction5), reference = as.factor(
 
 ### Cluster 2
 
-For cluster 2, it's still best to have a cut-off point of 0.5, purely because it's simply not worth it to call anyone in this segment given the ANN model. Lowering the cut-off point would result in a lot of costs from calling people who wouldn't say yes to our offering. As such, we'd incur losses of 108 * - 6 = -€648. That said, if we were to call everyone, we'd have profits of  108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657 (although we'd still make losses). 
-
+For cluster 2, it's still best to have a cut-off point of 0.5, purely because it's simply not worth it to call anyone in this segment given the ANN model. Lowering the cut-off point would result in a lot of costs from calling people who wouldn't say yes to our offering. This infers that still, excluding lost sales, we'd break even at **€0**. Compared to the old model, we would then be saving **€1952**.  Meanwhile, with lost sales, we'd incur losses of 108 * - 6 = **-€648**. That said, if we were to call everyone, we'd have profits of 108 * 6 - 1952 * 1 = **-€1304**. So, our incremental profits would be 1305 - 648 = **€657** (although we'd still make losses due to lost sales). 
 ### Cluster 4
 
-For cluster 4, it's best to have a cut-off point of 0.22, again because our ANN has a very low prediction value given the low success rate of the fourth cluster AND because reducing false negatives (-6) is more important than lowering false positives (-1). The profits in this case would be 3 * 6 - 54 * 6 - 3 * 1 = -€309, so unfortunately still negative. Incremental profits, however, would be positive. If we were to call everyone, we'd have profits of 57 * 6 - 1242 * 1 = -€900, making incremental profits of 900 - 309 = €591 by implementing an ANN model.
+For cluster 4, it's best to have a cut-off point of 0.22, because our ANN has a very low prediction value given the low success rate of the fourth cluster AND because reducing false negatives (-6) is more important than lowering false positives (-1). Excluding lost sales, the profits would now be 3 * (6-1) - 3 = **€12**. Because we don't call 1236 people, too, total incremental profits compared to the old model will be 1236 * 1 + 12 = **€1248**. When we include lost sales, though, we'd incur a net negative of 54 * €6 - €12 = **€312**, so unfortunately still a loss. Incremental profits, however, would be positive. If we were to call everyone, we'd have profits of 57 * 6 - 1242 * 1 = **€900**, making incremental profits of 900 - 312 = **€588** by implementing an ANN model.
 
 ### Cluster 5
 
-For cluster 5, it's best to have a cut-off point of 0.18, as our ANN has a very low prediction value of 0.03 for even observations that actually said "yes" in real life to our call. The total costs in this case would be 81 * 6 = 486 in lost sales and 8 * 1 = 8 in costs, resulting in a total of €494. Profits would be €6 * 1 - €494 = -€488  Still not incredible, but the main finding is that cluster 5 might not be worth it to call (oh, and don't forget to compare this to calling all people in the test set of cluster 5, with 1855 * 1 = €1855, and revenue of 82 * €6 = €492. Profits = €492 - €1855 = -€1363). So, based on the status quo, we'd still gain 1363 - 488 = €875.
+For cluster 5, we see something very interesting. We denote that *regardless of the cut-off point, the ANN model with two hidden layers will have lower profits than with an ANN with one hidden layer*. As such, conclusions for this improved model are equal to the conclusions for the initial model. Thus, we should overwrite the improved model. Savings stay at **€1859**.
+
+### Final Conclusion on ANN
+
+ANN still works well - savings stay at 1952 + 1248 + 1859 = **€5059**.
+
+### Overwriting the improved model
+
+```{r}
+improvedannprediction5 <- annprediction5
+```
 
 ### Final Conclusion
 
 > Simply put, ANN works. We cannot make these low-success clusters into money machines, and the model is not perfect in preventing us from calling anyone who will say no, but we have saved costs tremendously by using ANN. Savings are 657 + 591 + 875 = €2123.
-
-
-### Cluster 2
-
-### Cluster 4
-
-### Cluster 5
-
-> Text here.
 
 # KNN
 
@@ -560,21 +583,25 @@ confusionMatrix(data = tele_test5_pred_knn, reference = as.factor(tele_test5knn_
 
 ### Cluster 2
 
-Our kNN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over 94% of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that all 1953 people would say no, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our kNN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person. Using the kNN model on this cluster would result in us not calling 108 "yes" customers which would result in a loss of a potential €648 , however our overall costs would be less than if we were to call everyone 108 * 6 - 1953 * 1 = -€1305. So, our incremental profits would be 1305 - 648 = €657.
+Our kNN model never predicts that someone will say yes. Although this may seem weird at first, the model is trained with over *94%* of people actually saying no, so it does not learn that well what differentiates a yes from a no. That said, it predicted that all 1952 people would say no, being correct 94.47% of the time. The false negatives are worrying, though. We could have gotten 108 "yes'" if our kNN model were a bit stronger. That said, with such a model, we would prevent calling 1845 people that wouldn't have given us the yes-word anyways [kappa = 0 since detection rate = 0]. This proves that such a strategy significantly outperforms the idea of calling every single person. In total, excluding the loss of potential sales, the model saved the company **€1952** by not calling anyone in the cluster.
+
+Using the kNN model on this cluster would result in us not calling 108 "yes" customers which would result in a loss of a potential €648 , however our overall costs would be less than if we were to call everyone 108 * 6 - 1952 * 1 = -€1304. So, our incremental profits would be 1304 - 648 = **€656**. However this also raises the possibility of calling more people and inducing more costs.
 
 ### Cluster 4
 
-As with the previous cluster, our kNN model never predicts that someone will say yes for the same reasons stated previously. The model predicts that every single customer in the cluster would say no, doing it with a 95.41% accuracy. This cluster has the same issue with false negatives as cluster 2 and we therefore lose out on 57 * 6 = €342 in earnings. Using the kNN model instead of calling everyone we save out on spending 57*6 - 1242 = €900 on calls that would never return a profit. Thus, using the kNN model saves the company 900 - 342 = €558.
+As with the previous cluster, our kNN model never predicts that someone will say yes for the same reasons stated previously. The model predicts that every single customer in the cluster would say no, doing it with a **95.41%** accuracy. This cluster has the same issue with false negatives as cluster 2. In total, excluding the loss of potential sales, the model saved the company **€1242** by not calling anyone in the cluster.
+
+Including the lost earnings from our false negatives, the company would save out on spending 57 * 6 - 1242 = €900 on calls that would never return a profit. Thus, using the kNN model saves the company 900 - 342 = **€558**.
+ 
 
 ### Cluster 5
 
-Using the kNN model on cluster 5 leaves us again with no one saying yes. The model once again predicts that everyone will say no. With an accuracy of 95.58% the model once again leaves us with a set of false negatives, this time 82, meaning that the company will lose out on 82 * 6 = €492 in earnings. Using the kNN model instead of calling everyone we save out on spending 82*6 - 1242 = €1363 on calls that would never return a profit. Thus, using the kNN model saves the company 1363 - 492 = €871.
+Using the kNN model on cluster 5 leaves us again with no one saying yes. The model once again predicts that everyone will say no. With an accuracy of **95.58%** the model once again leaves us with a set of false negatives, this time 82, meaning that the company will lose out on 82 * 6 = €492 in earnings. In total, excluding the loss of potential sales, the model saved the company **€1855** by not calling anyone in the cluster. 
+
+Including the lost earnings from our false negatives, the company would save out on spending 82 * 6 - 1773 = €1281 on calls that would never return a profit. Thus, using the kNN model saves the company 1281 - 342 = **€789**.
 
 ### Final Conclusion on kNN
-kNN works to some extent. Using the model we did save the company thousands in reduced costs, because we would never have called a single customer in the respective clusters. For another project there could be value in searching through different k-values to be used for the different clusters.
-
-> TOTAL SAVINGS FOR KNN: 
-
+kNN works to some extent. Using the model we did save the company thousands in reduced costs, because we would never have called a single customer in the respective clusters. The total amount saved across the three clusters were **5049**. For another project there could be value in searching through different k-values to be used for the different clusters.
 
 # A Combined Prediction Model
 
@@ -597,6 +624,8 @@ combinedoutputs4$kNN <- ifelse(combinedoutputs4$kNN == "0", 0, 1)
 combinedoutputs5$kNN <- ifelse(combinedoutputs5$kNN == "0", 0, 1)
 
 # Let's have a look again...
+str(combinedoutputs2)
+str(combinedoutputs4)
 str(combinedoutputs5)
 
 # Everything's all good! Let's now have a real combined output.
@@ -620,6 +649,7 @@ combinedresults4 <- as.numeric(combinedoutputs4$mix)
 combinedresults5 <- as.numeric(combinedoutputs5$mix)
 
 # Create a cross table
+# Note that, for convenience, we can 
 CrossTable(tele_test2knn_labels, combinedresults2, prop.chisq = F)
 CrossTable(tele_test4knn_labels, combinedresults4, prop.chisq = F)
 CrossTable(tele_test5knn_labels, combinedresults5, prop.chisq = F)
@@ -638,19 +668,55 @@ The way to improve a combined model is by improving its roots (being the ANN, LR
 
 ## Interpreting our Combined Prediction Model
 
-> Text here. 
+### Cluster 2
+
+When looking at the Combined Cluster 2 model, we see that it would be unprofitable for the firm to call anyone as it predicts that 1185 people would not buy, while only 57 people would. Therefore, we recommend not using this combined model for prediction as it would result in a net loss of: (108 * 5) -(1844 * 1) = **-€1304**.
+Instead, it would be better for the firm to not call anyone in cluster 2, which would end up with a net value of **€0**. We acknowledge that the firm is leaving potential sales of 108 * 6 = **€648** on the table by not calling anyone in this cluster but is outweighed by the high costs of calling the 1844 other people as the model predicts. That said, the savings by not calling anyone in cluster 2 is **€1952**.
+
+### Cluster 4
+
+When looking at the Combined Cluster 4 model, we see that it is unprofitable for the firm to call anyone as it predicts that only 57 people would buy out of the total 1242 in this cluster. This means that the firm shouldn’t call anyone in this Cluster as the combined model predicts a net loss of: (57 * 5) - (1185 * 1) = *-€900* Instead, they should drop this Cluster which would result in a net profit/loss of **€0**. By not calling Cluster 4, the company would leave a revenue of  57 * 6 = **€342**, but since we can’t surgically call the 57 people who are predicted to buy in this cluster, we would end up with a net loss as predicted by the model. That said, the savings by not calling anyone in cluster 4 is **€1242**.
+
+### Cluster 5
+
+When looking at the Combined Cluster 5 model, we see that it would also not be profitable as it predicts that only 82 out of the 1855 persons in this cluster would by. Calling everyone in this cluster would result in a net loss of: (82 * 5) - (1773 * 1) = *-€1363*. By not calling anyone in this cluster the firm would not incur any costs or sales with this cluster which would result in a net profit of 0. They are, however, leaving sales on the table by not calling anyone in this cluster equal to (82 * 6) = *€492*. That said, the savings by not calling anyone in cluster 5 is **€1855**.
+
+As such, the savings in total are **€5049**.
 
 # Conclusion and Recommendations
 
 ## Profits without any model
 
-## Profits with LR
+> The reasoning we will use in this section is as follows: we assume that we still call everyone in the clusters 1 and 3. Next, we will call everyone in our train sets. Yet, we will change the people whom we call in our test sets based on the models we ran above. That said, we can already state that the final result will be negative! Yet, from a managerial perspective, we merely care about the impact of running such a model (i.e., what are the actual savings made). As such, we will only consider the impact on the test sets (calling everyone vs. model output).
 
-## Profits with ANN
+## Profits from calling everyone in test set 2,4, and 5
 
-## Profits with kNN
+```{r}
+# Formula: revenue for all yes' and €1 for everyone we call (being everyone in our test set)
+profitsts2 <- sum(tele_test2$y) * 6 - nrow(tele_test2)
+profitsts4 <- sum(tele_test4$y) * 6 - nrow(tele_test4)
+profitsts5 <- sum(tele_test5$y) * 6 - nrow(tele_test5)
+profitsts245 <- profitsts2 + profitsts4 + profitsts5
+```
 
-## Profits with Combined Model
+## Incremental Savings with LR
+
+Without a model, we'd lose €3567. The model suggests that we call some people, resulting in savings of €5045 (see LR section), so incremental profits of -3567 + 5045 = **€1478**. 
+
+## Incremental Savings with ANN
+
+Without a model, we'd lose €3567. The model suggests that we call some people, resulting in savings of €5059 (see ANN section), so incremental profits of -3567 + 5059 = **€1492**.
+
+## Incremental Savings with kNN
+
+Without a model, we'd lose €3567. The model suggests that we don't call anyone, resulting in savings of €5049 (see KNN section), so incremental profits of -3567 + 5049 = **€1482**.
+
+## Incremental Savings with Combined Model
+
+Without a model, we'd lose €3567. The model suggests that we don't call anyone, resulting in savings of €5049 (see Combined Prediction Model section), so incremental profits of -3567 + 5049 = **€1482**.
+ 
 
 # FINAL CONCLUSION - BEST MODEL
+
+> The best model is the ANN model, where the ANN model for cluster 2 and 4 house 2 layers each, and cluster 5 houses 1 layer (resulting in savings of €1492. Regardless, all models seem to be eeringly similar due to the skewed nature of the clustered data - 2,4, and 5 all indicate that almost no one will actually buy the firm's offering. Although this may appear as a somewhat negative outcome at first, it is vital to understand that whenever the telemarketing firm is able to categorize the next potential client in one of the clusters, it can save money by simply not calling the person to begin with. That said, the models - and especially the ANN model - can help us predict that there might be someone in the clusters who will answer the phone if we were to call them. Anew, however, we must mention that all models point us in a similar direction, which is calling almost no one, or no one at all. With that, there is some facet of indifference in our conclusion, although the data points towards a slight preference for the ANN model.  
 
