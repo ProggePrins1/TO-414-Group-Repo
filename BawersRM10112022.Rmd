@@ -1,5 +1,6 @@
 ---
 title: "BawersRM10112022"
+author: "Bawer Betasi, Anuar Baisynov, Martin Bech, Thomas Madsen, Marius McIntosh"
 output: 
   html_document:
     highlight: tango
@@ -130,9 +131,28 @@ success_by_segm
 ``` 
 > Through k-means clustering, we identified 5 clusters. The clusters had different call success rates. There were two clusters whose success rates were above the 16.7% threshold determined based on our per-call contribution margin. The other three clusters had significantly lower success rates. Therefore, we are going to apply our machine learning models to these clusters in order to optimize our targeting and, hopefully, achieve a higher success rate.
 
+## Preparing datasets for modeling
+```{r}
+# Create dataframes with the three clusters using conditional filtering
+library(tidyverse)
+normcluster2 <- tele_norm_cluster[tele_norm_cluster$cluster == 2,] %>% select(-cluster)
+normcluster4 <- tele_norm_cluster[tele_norm_cluster$cluster == 4,] %>% select(-cluster)
+normcluster5 <- tele_norm_cluster[tele_norm_cluster$cluster == 5,] %>% select(-cluster)
+```
 
+## Let's create train and test datasets for each cluster
+```{r}
+# Do an approximate 80-20 train-test split. We prevented hard-coding this by using the floor() function.
 
+tele_train2 <- normcluster2[1:floor(0.8*nrow(normcluster2)),]
+tele_test2 <- normcluster2[(floor(0.8*nrow(normcluster2)+1)):nrow(normcluster2),]
 
+tele_train4 <- normcluster4[1:floor(0.8*nrow(normcluster4)),]
+tele_test4 <- normcluster4[(floor(0.8*nrow(normcluster4)+1)):nrow(normcluster4),]
+
+tele_train5 <- normcluster5[1:floor(0.8*nrow(normcluster5)),]
+tele_test5 <- normcluster5[(floor(0.8*nrow(normcluster5)+1)):nrow(normcluster5),]
+```
 
 # Logistic Regression
 
@@ -178,7 +198,7 @@ tele_test5_log$y <- NULL
 ```
 
 ## Running the initial prediction models 
-```{r}
+```{r, error = TRUE}
 predictionmodelt2 <- glm(y ~ ., data = tele_train2_log, family = "binomial")
 summary(predictionmodelt2)
 
@@ -203,10 +223,6 @@ tele_train5_log$pdaysdummy <- NULL
 predictionmodelt5 <- glm(y ~ ., tele_train5_log, family = "binomial")
 # now we get two more warnings, so let's fix those too.
 # first, we see that two predictors are perfectly correlated. By merely looking at the dataset, we denote that this must be between previous and poutcome. Everyone who was called previously had a failure. Since multicollinearity can hurt our model, we must remove one of the variables.
-
-# Let's confirm this first
-cor(as.numeric(tele_train5_log$y), as.numeric(tele_train5_log$poutcome))
-cor(as.numeric(tele_train5_log$y), tele_train5_log$previous)
 # Yes, we must remove one variable. Let's choose to drop previous.
 
 tele_train5_log$previous <- NULL
@@ -220,7 +236,7 @@ summary(predictionmodelt5)
 
 ## Using Logistic Regression on the Test Data - why it doesn't "just" work.
 
-```{r}
+```{r, error = TRUE}
 binarypredictionlogt2 <- ifelse(predict(predictionmodelt2, newdata = tele_test2_log, type = "response") < 0.5, 0, 1)
 
 binarypredictionlogt4 <- ifelse(predict(predictionmodelt4, newdata = tele_test4_log, type = "response") < 0.5, 0, 1)
@@ -267,11 +283,12 @@ summary(improvedpredictionmodelt5)
 
 ## Rerun Improved Prediction Models
 
-```{r}
+```{r, error = TRUE}
 
 # Cluster 2
 
-improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
+# Note to TA: we changed this into a comment rather than deleting it to show how we had to improve an error: 
+# improvedbinarypredictionlogt2 <- ifelse(predict(improvedpredictionmodelt2, newdata = tele_test2_log, type = "response") < 0.4, 0, 1)
 # Because it was never explained in the lecture how to solve the issue of a factor value in the test set that was 
 # not in the train set, we had to devise our own solution to this issue.
 # First, we looked at the number of values that had the month october. 
@@ -335,28 +352,6 @@ The logistic regression model for cluster 5 essentially tells us that no one sho
 LR results in total incremental profits, excluding lost sales, of 1950 + 1240 + 1855 = **€5045**.
 
 # ANN
-## Preparing datasets for modeling
-```{r}
-# Create dataframes with the three clusters using conditional filtering
-library(tidyverse)
-normcluster2 <- tele_norm_cluster[tele_norm_cluster$cluster == 2,] %>% select(-cluster)
-normcluster4 <- tele_norm_cluster[tele_norm_cluster$cluster == 4,] %>% select(-cluster)
-normcluster5 <- tele_norm_cluster[tele_norm_cluster$cluster == 5,] %>% select(-cluster)
-```
-
-## Let's create train and test datasets for each cluster
-```{r}
-# Do an approximate 80-20 train-test split. We prevented hard-coding this by using the floor() function.
-
-tele_train2 <- normcluster2[1:floor(0.8*nrow(normcluster2)),]
-tele_test2 <- normcluster2[(floor(0.8*nrow(normcluster2)+1)):nrow(normcluster2),]
-
-tele_train4 <- normcluster4[1:floor(0.8*nrow(normcluster4)),]
-tele_test4 <- normcluster4[(floor(0.8*nrow(normcluster4)+1)):nrow(normcluster4),]
-
-tele_train5 <- normcluster5[1:floor(0.8*nrow(normcluster5)),]
-tele_test5 <- normcluster5[(floor(0.8*nrow(normcluster5)+1)):nrow(normcluster5),]
-```
 
 ## Building our initial model
 
@@ -448,19 +443,16 @@ That said, when we include lost sales, we better understand the impact of 81 fal
 
 ## Improving Our ANN Model
 
-```{r}
+```{r, cache = TRUE}
 # Let's do everything again, but now adding some additional layers to the ANN cluster models.
 
 # Choosing the hidden levels is somewhat arbitrary. To not overload our computers, we went for hidden = 2.
 
-improvedtele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 2)
-plot(tele_model2)
+improvedtele_model2 <- neuralnet(y ~., data = tele_train2, hidden = 2, stepmax = 1e+08)
 
 improvedtele_model4 <- neuralnet(y ~ ., data = tele_train4, hidden = 2, stepmax = 1e+08)
-plot(tele_model4)
 
 improvedtele_model5 <- neuralnet(y ~ ., data = tele_train5, hidden = 2, stepmax = 1e+08)
-plot(tele_model5)
 
 ```
 
@@ -719,4 +711,3 @@ Without a model, we'd lose €3567. The model suggests that we don't call anyone
 # FINAL CONCLUSION - BEST MODEL
 
 > The best model is the ANN model, where the ANN model for cluster 2 and 4 house 2 layers each, and cluster 5 houses 1 layer (resulting in savings of €1492. Regardless, all models seem to be eeringly similar due to the skewed nature of the clustered data - 2,4, and 5 all indicate that almost no one will actually buy the firm's offering. Although this may appear as a somewhat negative outcome at first, it is vital to understand that whenever the telemarketing firm is able to categorize the next potential client in one of the clusters, it can save money by simply not calling the person to begin with. That said, the models - and especially the ANN model - can help us predict that there might be someone in the clusters who will answer the phone if we were to call them. Anew, however, we must mention that all models point us in a similar direction, which is calling almost no one, or no one at all. With that, there is some facet of indifference in our conclusion, although the data points towards a slight preference for the ANN model.  
-
